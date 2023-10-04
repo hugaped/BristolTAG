@@ -1,0 +1,69 @@
+#Fixed effects 1st order fractional polynomial model (e.g. Weibull (P1=0) and Gompertz (P1=1))
+model{                         	  # *** PROGRAM STARTS
+for (j in 1:N){   							   # LOOP THROUGH EVENTS
+
+	# time in months transformed according to power P1 
+	  #timen[j] <- (time[j])    
+	  timen1[j] <- (equals(P1,0)*log(time[j])+(1-equals(P1,0))*pow(time[j],P1) ) 
+
+	  r[j] ~ dbin(p[j], z[j])      		  # likelihood according to eq. 
+	  p[j] <- 1-exp(-h[j]*dt[j])   		  # hazard rate in each interval standardized by unit of time
+
+	#Fixed effects model
+	# hazard over time according to FP
+	  log(h[j]) <- Alpha[s[j],a[j],1] + Alpha[s[j],a[j],2] * timen1[j] 
+	  
+	#Deviance contribution
+	rhat[j] <- p[j] * z[j]  # expected value of the numerators
+	dev[j] <- (2*(r[j]*(log(r[j])-log(rhat[j])) + (z[j]-r[j])*(log(z[j]-r[j]) - log(z[j]-	rhat[j]))))
+ }
+
+for (i in 1:ns){                  # LOOP THROUGH STUDIES
+  for (k in 1:na[i]){             # LOOP THROUGH ARMS
+    Alpha[i,k,1] <- mu[i,1] + d[t[i,k],1] - d[t[i,1],1] # model for linear predictor of alpha_0 
+    Alpha[i,k,2] <- mu[i,2] + d[t[i,k],2] - d[t[i,1],2] # model for linear predictor of alpha_1
+   }
+ }
+ 
+ totresdev <- sum(dev[])           #Total Residual Deviance
+
+     
+#priors
+for (i in 1:ns){        		      # LOOP THROUGH STUDIES
+  mu[i,1:2] ~ dmnorm(mean[1:2], prec[,])   # vague priors for all trial baselines 
+ }
+d[1,1]<-0        				         # alpha_0 treatment effect is zero for reference treatment
+d[1,2]<-0       					        # alpha_1 treatment effect is zero for reference treatment
+
+for (k in 2:nt){			            # LOOP THROUGH TREATMENTS
+  d[k,1:2] ~ dmnorm(mean[1:2],prec[,])  # vague priors for treatment effects 
+ }
+
+#Output
+#for (m in 1:maxt){     			     # create time points for output 
+#  time1[m]<-(equals(P1,0)*log(m) + (1-equals(P1,0))*pow(m,P1)   ) 
+# }
+
+#Hazard ratios over time for all possible contrasts
+#for (c in 1:(nt-1)){
+#  for (k in (c+1):nt){
+#    for (m in 1:maxt){
+#      log(HR[c,k,m])<-(d[k,1]-d[c,1])+(d[k,2]-d[c,2])*time1[m] 
+#     }
+#   }
+# }
+
+# Provide estimates of survival probabilities over time by treatment 
+#for (k in 1:nt){
+#  alpha0[k]<-mu[3,1]+d[k,1]       # alpha_0 by treatment using baseline from study 3
+#  alpha1[k]<-mu[3,2]+d[k,2]       # alpha_1 by treatment using baseline from study 3 
+#           
+#  for (m in 1:maxt){
+#    log(HAZARD[k,m])<-alpha0[k]+alpha1[k]*time1[m]  #hazard over time by treatment
+#	  CUM_H[k,m]<-sum(HAZARD[k,1:m]) # cumulative hazard over time by treatment
+#    T[k,m]<-1-exp(-CUM_H[k,m])	  # mortality over time by treatment
+#	  S[k,m]<-1-T[k,m]              # survival over time by treatment
+#   }
+# }
+
+}                                 # *** PROGRAM ENDS

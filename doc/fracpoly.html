@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Fractional Polynomial NMA Example</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Fractional Polynomial NMA Example</h1>
+
+
+
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(BristolTAG)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="fu">library</span>(R2jags)</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="fu">library</span>(mcmcplots)</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="fu">library</span>(doBy)</span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="fu">library</span>(survival)</span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="fu">library</span>(RColorBrewer)</span></code></pre></div>
+<p>This vignette illustrates how to use the various functions created to
+run fractional polynomial analysis of survival data for the NICE NSCLC
+pathways project. Note that, unlike Freeman’s models, I’ve written these
+in JAGS because it is easier to run directly from R, which makes our
+workflow much easier. This does mean that JAGS needs to be installed
+separately. It can be downloaded from here: <a href="https://sourceforge.net/projects/mcmc-jags/files/latest/download" class="uri">https://sourceforge.net/projects/mcmc-jags/files/latest/download</a></p>
+<p>Since these functions can be run rapidly within a script, we’ll avoid
+writing CSV files to the drive, since that has the danger of creating a
+messy file structure. However, I will save the resulting JAGS models,
+since these take time to run so we don’t want to have to rerun them
+every time we want to examine outputs.</p>
+<p>This example uses 1st order fractional polynomials, but it should be
+pretty obvious how to extend it to 2nd order. I’ll include an example of
+how to call the JAGS script for the 2nd order model too though.</p>
+<div id="preparing-the-data" class="section level2">
+<h2>Preparing the data</h2>
+<p>To run the analyses we need to have IPD KM data. This can be
+digitized using the Guyott method, and other merging, subsetting should
+also be done prior to this (e.g. need to merge reported PDL-1
+categories). There are other functions for this, but I won’t include
+them in this vignette as that’s a separate workflow. For this we’ll
+assume that we have IPD KM data that is in the format ready for
+analysis.</p>
+<div id="aggregating-the-data" class="section level3">
+<h3>Aggregating the data</h3>
+<p>To run fractional polynomial models on the log-hazard function (the
+model developed by Jansen), the first step is to aggregate the IPD into
+specified time intervals. We’ll use intervals of 1 week for this
+example, but we can look at changing that if we need to.</p>
+<p>I’ll show this using PFS data for the NS1 node. Treatments are named
+within the code below, but they can be reordered later in the fractional
+polynomial data prep function.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># Load the data to use</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co">#df &lt;- read.csv(&quot;Analysis/NS1/fracpoly/NS1 PFS IPD.csv&quot;)</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>df <span class="ot">&lt;-</span> NS1_PFS <span class="co"># (example here loads it from package to allow vignette to run)</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co"># Add treatment as a factor variable </span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>df<span class="sc">$</span>treatment <span class="ot">&lt;-</span> <span class="fu">factor</span>(df<span class="sc">$</span>txCode, <span class="at">level=</span><span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>          <span class="at">label=</span><span class="fu">c</span>(<span class="st">&quot;PPCT&quot;</span>, <span class="st">&quot;PCT&quot;</span>, <span class="st">&quot;ABCP&quot;</span>, <span class="st">&quot;BCP&quot;</span>))</span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a><span class="co"># Select time points for aggregating data - here we use 1 week intervals</span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>timepoints <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="dv">1</span>,<span class="dv">72</span>, <span class="at">by=</span><span class="dv">1</span>)</span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a><span class="co"># Time points including zero</span></span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a>timepoints2 <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">0</span>, timepoints)</span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="co"># Apply function</span></span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a>anova <span class="ot">&lt;-</span> <span class="fu">anova_data</span>(<span class="at">timepoints=</span>timepoints, <span class="at">timepoints2=</span>timepoints2, <span class="at">ref.study=</span><span class="dv">3</span>,</span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a>                      <span class="at">df=</span>df)</span></code></pre></div>
+</div>
+<div id="preparing-the-data-for-jags" class="section level3">
+<h3>Preparing the data for JAGS</h3>
+<p>Next step is to get the data in the format we need for JAGS. This
+includes adding study and arm indices, and getting the data into a
+list.</p>
+<p>Within <code>fp_data()</code> the treatment names should be specified
+within the order you want them to be indexed in the network. If they
+don’t match then an error will be thrown. <code>polyorder</code>
+specifies the fractional polynomial order (either 1 or 2 for 1st or 2nd
+order respectively).</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>jagsdat <span class="ot">&lt;-</span> <span class="fu">fp_data</span>(<span class="at">data=</span>anova, <span class="at">trtnames=</span><span class="fu">c</span>(<span class="st">&quot;BCP&quot;</span>, <span class="st">&quot;ABCP&quot;</span>, <span class="st">&quot;PPCT&quot;</span>, <span class="st">&quot;PCT&quot;</span>),</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>                   <span class="at">polyorder=</span><span class="dv">1</span>)</span></code></pre></div>
+</div>
+</div>
+<div id="running-the-model" class="section level2">
+<h2>Running the model</h2>
+<div id="defining-initial-values" class="section level3">
+<h3>Defining initial values</h3>
+<p>This can be specified manually, or it can be automated using the
+<code>fp_geninits()</code> function. This uses fixed values for 2 chains
+and then uses random (but reasonable) values for the 3rd. The number of
+studies (<code>ns</code>) and the fractional polynomial order need to be
+specified, and the <code>seed</code> is optional for
+reproducibility.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>inits <span class="ot">&lt;-</span> <span class="fu">fp_geninits</span>(<span class="at">ns=</span><span class="dv">4</span>, <span class="at">polyorder=</span><span class="dv">1</span>, <span class="at">seed=</span><span class="dv">890421</span>)</span></code></pre></div>
+</div>
+<div id="calling-jags" class="section level3">
+<h3>Calling JAGS</h3>
+<p>The first thing here is to note that we have not specified the
+fractional polynomial power value that we want to use yet! So the first
+bit of our code below adds that as data to the <code>jagsdat</code>
+object.</p>
+<p>JAGS is then called to run the actual model. There are various
+arguments within this which you can check in the help file
+(<code>?jags</code>), but most of them should be pretty self
+explanatory. Another function (<code>jags.parallel()</code>) allows JAGS
+to be run in parallel, which might be useful for really slow models.
+I’ve also set a seed to get reproducible results (though these will be
+different if different initial values are used).</p>
+<p>The main thing that we will want to change is the choice of model,
+specified within the <code>model.file</code> argument. My plan is that
+we save all models in a folder (<code>&quot;Analysis/JAGSmodels&quot;</code>) as
+separate <code>.jags</code> files, and we then reference the location to
+them with the <code>model.file</code> argument depending on which model
+we want to run. However, standard ones will be saved within the
+<code>BristolTAG</code> package, and the code below will read one of
+these. The current code is for a 1st order fractional polynomial, but we
+can write other code for 2nd order, other distributions, random effects
+models, class models, etc. as needed.</p>
+<p>I’ve specified that we should monitor the <code>d</code> (needed for
+time-varying HRs and predictions), the <code>mu</code> (needed for
+predictions), and the <code>dev</code> and <code>totresdev</code>
+(needed to look at model fit). DIC is also automatically monitored
+within the model.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co"># Set fractional polynomial power</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>jagsdat<span class="sc">$</span>P1 <span class="ot">&lt;-</span> <span class="sc">-</span><span class="fl">0.5</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co"># Model does not include (or monitor) rankings - can easily be done in R</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>jagsmod <span class="ot">&lt;-</span> <span class="fu">jags</span>(<span class="at">data=</span>jagsdat, <span class="at">inits=</span>inits,</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>                <span class="at">parameters.to.save=</span><span class="fu">c</span>(<span class="st">&quot;d&quot;</span>, <span class="st">&quot;mu&quot;</span>, <span class="st">&quot;dev&quot;</span>, <span class="st">&quot;totresdev&quot;</span>),</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>                <span class="at">model.file=</span><span class="fu">system.file</span>(<span class="st">&quot;JAGSmodels&quot;</span>, <span class="st">&quot;FE_1st_order_model.jags&quot;</span>, <span class="at">package=</span><span class="st">&quot;BristolTAG&quot;</span>),</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>                <span class="at">jags.seed=</span><span class="dv">890421</span>,</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>                <span class="at">n.iter=</span><span class="dv">30000</span>, <span class="at">n.burnin=</span><span class="dv">2000</span>, <span class="at">n.thin=</span><span class="dv">1</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>)</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co">#&gt; module glm loaded</span></span></code></pre></div>
+<p>It’s a good idea to save the model afterwards as an RDS file that can
+be loaded into R. If you use the following command it will save the file
+with a name that indicates the fractional polynomial power value
+used.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="co"># Note that eval=FALSE so this command won&#39;t overwrite files document is rendered</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="fu">saveRDS</span>(jagsmod, <span class="at">file=</span><span class="fu">paste0</span>(<span class="st">&quot;Analysis/NS1/JAGS_Results/pfs_fpoly1_&quot;</span>, jagsdat<span class="sc">$</span>P1))</span></code></pre></div>
+</div>
+<div id="running-a-sequence-of-models" class="section level3">
+<h3>Running a sequence of models</h3>
+<p>Because there are multiple fractional polynomial models that can be
+run with different powers (particularly for 2nd order models of which
+there are n(P)2), there’s a function for running them all sequentially
+and saving them to an object/file so that you can set it off running and
+go and do something fun like play badminton or go to the pub.</p>
+<p><code>sequence_fpoly()</code> takes similar commands to the
+<code>jags()</code> function above (you can specify the number of
+iterations, initial values, etc.). You only have to pass it the correct
+dataset and to specify the fractional polynomial <code>powers</code>
+that you want to explore, as well as the <code>polyorder</code> of the
+fractional polynomial.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>modseq <span class="ot">&lt;-</span> <span class="fu">sequence_fpoly</span>(jagsdat, <span class="at">powers=</span><span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>,<span class="sc">-</span><span class="fl">0.5</span>))</span></code></pre></div>
+<p>You can also specify a <code>savefile</code> (format must be
+<code>.rds</code>) where the resulting set of models should be saved (it
+saves after each model is run in case something crashes part way
+through), and set <code>overwrite==TRUE</code> if you want the previous
+<code>.rds</code> file to be overwritten (setting it to
+<code>FALSE</code> means that new models will be appended to the
+existing file).</p>
+<p>The resulting object is a named list of models (so it could be
+dangerously massive if exploring several 2nd order FP powers). Note that
+this function does not check for convergence - that’s something you have
+to do yourself (I might write another function for that but that would
+only rely on checking Rhat values anyway, which isn’t perfect).</p>
+<p>If there are errors in running a model (I think for some positive 1st
+order powers the default initial values might be wrong) then the list
+element will be the corresponding error message rather than the model
+results.</p>
+<p>Now that I’ve written it, you could always just use this function to
+run your models individually as well, without having to specify the file
+location (etc) shown in the previous section.</p>
+</div>
+</div>
+<div id="inspecting-results" class="section level2">
+<h2>Inspecting results</h2>
+<div id="model-diagnostics" class="section level3">
+<h3>Model diagnostics</h3>
+<p>There are various packages to assess model convergence. The coda one
+allows lots of detailed investigation of this. But it typically requires
+running lots of different arguments. I like the <code>mcmcplots</code>
+package because you can run a single command and it outputs an HTML of
+various diagnostics. The <code>parms</code> argument takes the names of
+monitored nodes that you want to look at diagnostics for. I’m mainly
+looking at d, since if this converges then other parameters are also
+likely to have done so.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">mcmcplot</span>(jagsmod, <span class="at">parms =</span> <span class="fu">c</span>(<span class="st">&quot;d&quot;</span>))</span></code></pre></div>
+</div>
+<div id="model-fit" class="section level3">
+<h3>Model fit</h3>
+<p>Model fit can be assessed using residual deviance. This can be
+plotted for a single model, or two models can be compared (dev-dev
+plots) using <code>devplot()</code>. <strong>Note that for these to
+work, <code>dev</code> and <code>totresdev</code> must have been
+monitored in the model.</strong></p>
+<p>All observations are plotted in order, so it’s quite hard to work out
+which points correspond to which study/arm. <code>vline</code> can be
+set to either <code>&quot;study&quot;</code> or <code>&quot;arm&quot;</code> to plot
+vertical lines that indicate the separation of studies/arms. Study/arm 1
+will be nearest to the origin.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="co"># Looking at model fit of a single model</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="fu">devplot</span>(jagsmod)</span></code></pre></div>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASAAAAEgCAMAAAAjXV6yAAAA6lBMVEUAAAAAADoAAGYAOmYAOpAAZpAAZrYzMzM6AAA6ADo6AGY6OgA6OmY6OpA6kJA6kLY6kNtNTU1NTW5NTY5NbqtNjshmAABmADpmAGZmOgBmOjpmtrZmtv9uTU1uTW5uTY5ubqtuq+SOTU2OTW6OTY6OyP+QOgCQOjqQOmaQZgCQkDqQkGaQtpCQ27aQ2/+rbk2rbm6rbo6ryKur5P+2ZgC2kDq22/+2///Ijk3I///bkDrbkJDb25Db/7bb/9vb///kq27k///r6+v/tmb/yI7/25D/27b/29v/5Kv//7b//8j//9v//+T///9u+wgxAAAACXBIWXMAAA7DAAAOwwHHb6hkAAARZklEQVR4nO2dDZvcNhGAvSEc14ODSyhJCpfSBC4BGlJoFpIu0Gt3s3Af8f//O+jbGmmkkW157Ttpnie5tT0aSa+l0aftpoWyeXjZVrGkcY4rIEcqIEIqIEJcQFUcqYAIqYAI6QnoZ+XIQEDm1zYtQF61A8aKAloftbsH72MmK6AKSEkFRKgtG1DQM25pFTxWVL0CIixWQITFZQFqmkie7gggWoYDapoYoTvipGmpgAipgAg5kA8aq3cYQFfPHz26aNubl48+/9ENVmgrBuTmD+/aqy/fffrmov3hN26wCqhtP3IqHy5u/vhde/X775xgFZAUVoquvvpRFCY1F7Q9iDRZVEaob7ceoOsnjRbTV/z0zYv24+cakM21yMHqxu1E37x8wVz1VxWQljVc8rl6ztqwdhYfdCBz43yQ5COq2cFbsQOZGwfoh0dcLmo/qJcUDWhttV9UsBIBcRftNWShYAUCun11rv6LScFO+vqJAHQWN1kBVUBKKiBCbdmAluikscFqOFiBgNKkAiKkYEDXz6yKBQ6wYAU6ae6EVC9x06zeEsFKBNSK0RiXSEtWOCBaKiBCCnbSaVIBEVLwsk8iIPOrlqBosOqkiWAVEBGsQECLGs0fyFzPEkTO2LelO+k1/bRh2YASpAIipAIipGAnXVsxKGgJEu2YWN6ggpUJSKGJPa5RAbWLALRUJ62q2PxTrksF1O64j45t8CgdECkVECFlO2m+IhZf9Skd0GKc9IHMjW7mxQZyvh3413UjORcX0EcB5sMFEqxQJw2r2IfH37IS9Olv75BghQJynTSvYjcvxX77tvjHoTDhgK6+fGeVotJLkCPmKR/jh8p20u3+GM4HVUAQ0O2rI6jEAfEnDj/9vTbzXLypMt0PevzODVYmIPJJjeKdNPHql7Z4QK6TDgcrExD5IELpgKLrGTBYddJEsDIBtfuThTjpA5nrX8XqyqqRZc9JL9RJJ0gHKPpCqbQ0hNWaUBQzA2LNGKtmsd6iARR/JVlaGsJqTSiKmQGtj/ik4uYI0XeClQmIFSA+oE9am58WUDCKuVuxcz4hnbZ5YVIfFIxi7o7i2W71llc0MlihzTwbrB7F97oWDoiW2g8ipGxA3T7OoBcqfF1Mr6x6s/ce11JLkF6bD7b0ZTvpCsiS+OaF4Ee0CgekN3Fu6psXajOPq3VSAaFqndR1MVStk8Bg9fbV+RIeZlkoII5mfdbuIqPVsp00B7RJnDArEpD6dE3sS6L3CVB8yg8FxBfn1+HXT7X3ChAxaXwHmnks/Rmd9J0HhGZgRkByTUxLaB/MPQI0xAcZmXs0fxBAY4Ya+9MFjObjPmiqWLUs2wcdyNx9A8SK1MIAiX3Sc3w2ApXU1e48saZswRPPiy3n81kQ0AI2ccrnxZbz+az5AXlT0eJxqOV8Pov7IEKlp8WIJO1R1A+zHPzrUAudD/IEliA7mDSe4DTHcfQiWGArFvFB2inEOI1Kqt9uzQ0IeWY18vkslf5o8zs4qdzm4gC5LxYg+kFTAjLD5iUB6v3+IFPDcgPShSfig+bdvEAGA8bz+6DGKp0gkplbscW8u0Oj6Qqn+jV3M7+Ut79YxWZZgEg58GA1AmjCWIXgU66Le14MEGp12zl1rFzuHCCtlzTpMUkzvzE9jwWtrC4J0JKeWTWpCgMq20lHAGkfdMcABYt9fkCuSlqsMwMKO4ax80GO5QrIFWfAOvd0BykzAWpIvbyxtpGhxnlse9ChfBC0bBGaGdD64X/kU5lksGmTauNeEiDVmZ5iCx7VuYtUWEBo9vmgiQCR3d+YR1sOoHbDq1h8Pqjv8pJaleIyVLtBQ8/zHsXdRPNB/UqQWyFRH3S3+kHKVnhDTy8fNF4vSS2epgkAocUkb7OT0xxRqoPbgKOtfOmAxCsFBveD7j+gsd/ViPggSoKD1aDeeCfd3wfVD49Ysvh1MV/4HZ+7mZ+qH9RXDcuO7C5GVbTeQvtBaJ0ezNGz5gAKSaJaINZO8gPCW4WhSfWtLQHQqGdWpwYUqDtowIkAxfuIINgcgBLNpXEkrU2wLpbRBzUBazO3Yst5l+tS+0H1hdudJO2TDgcrE1CC3InHoajJpyRr9xgQOX2ZZG3Z7+5I0QtSmA4Q/u6OhX5fLIxhOkD4uztC3xdLS8d0TjocPXYh17qY/+6O0PfFmiaJ0ByAMEJ5WjHs3R2h74s1+HJVHnHNYuti4cixhMUTithKfndH6PtiWAnKNieNzXQ4epGyixWuaAnCAvRr5rHPZwUmJAJpcPRCScXFApTi95K99LSAAglzDIbUAknFpQuR5vj6tmJJgKx3dwAn3eP7YlitywKoy/FETQNiMr0E9fi+2GSAnBiGFaFQrLi9aYYaSYASfFC4mTeAYglHIGKPL8pYA8TxftDor0Ol+CBM+gHSKqGyNBUg8TRCfM5s9ukOG1CwtiUDahr0PJdQFVs3S3iH2UhASNFCJ3Glgd4+aJ1hNG8izT5YtbITBpRoDnQfnGuREpT06Zp4GrqYJ50PCrZnfQEhqPGxWLx+tUsDhEbcJ1bQ/4TXpn0cai5AOt4BHcWkEkRLAiAR1UgflDDRE22+ek/ap/qgwY8i+Gkk1BxJAgRMd/0gxG1v1W/XosOh/3xQhkcRDgjItNKAkDLXwIT4qkTiJttp38CUTQ6ocXOtzCGAPNVZADmEsjpph8TBAaU8ipBgPAwo2G8Z0Q/C+BhAbqLG+qABW/CQ1AUBoXmhk0roYTa3/vlAQQtKpmYezXPIB2ll/JYnyfAaazx6orUpAdmCAEq4l+HBKjCGaYjTWD8I1seAWifIlKuppj2cdC9AXb8lEyBETZ4OdRRNoJBaJ7F90rHPRiSsKBGrVikPj8XCxq2EjDfwKp2GaXfad346OHUNTyWWICvkoBJkfNCwEpQbEBgVWdnx29sk5+s01Ek+KOgA+vsgLtkeRejygi09NT6hBEBNg4QLSGzBKzHWSD8oNucBlp4jek3j5AckdRQgP+awz88OiBQDyM+jf2gjguqDAW29mhZzaVSJ20Zucx5Abr2xVX1C8E+syxb0LlukqhGAIhZje5zyAWrMFJkTFwZIHw4BpPRsq4GYYQnyypE5AwA5SqN70g0UtLrDrNiZcROdOKY1M2EgTl8f+CCXkBPedpKWnQxDDQgokK1tdxXcbSc9iWNax/simg3sXGDTHO6ttc/6Oc0xFotkyCymW0XHziK0hl1xzAEdX1Od6QEInvVzOnIshvVpYI6sAgb0xgHqXBq8HgHkEcJa1u44Twmi8BhAiGMGB/iY1jsX6A50qi6gQNzOVftQH2cB1IDcowG2HUQ3kXZ6kMGTf3tRvRbeJkcNFl83kVskkiigvjvtg6WjtdUgIDsrXSivmcdqBdDz7jxaIAEgL5F9AfX9Sia8cTghu+ur+djtWACQmxt92BeQ3f1C1Jxj+yh9pz0QHxDMAIhMJ9VOmVPo4uIjQAH53R1vMyxutu9Qo+9XMrHC0NhFqvU7/T6rBD4UII+QExzRaJW1IKHknfYRQG759UAggGBZC7OBCccAxXo2PiAnnfIg9urc5J32MUB2vA4IB5DddFtJCgLCFb3uqVLCAbkZt/kAQE5cEUC0JAGyU2J5X6CYQMg122ovSgfZ2gdIZEEbQwBR3xcL8dFqDWi/bFUrErejiANSp/xsuQdbN7b+hJIf6qW+LxZIJl76ndQlAAIuP5ApiAG/4tzBLgl9AClMT4EPIr4vFkkzfSUKyO1GRCNDWjx4xS3iIwA5/SDi+2LBFHuXtv4vYvXL14F2YHShFNnrYlYajPWAmRgg72GWyPfFcDrOJe1w9EVbC1gzpcAYd9JmDZExxwbihUXQu+jnAcQU2ycdKEEooNZKiRuNhcYRLz09Ny94RFy17o7E4o4tn0Wc9KqPD6Ikr9oBY01u5iPfFxubhv5qSwS0nO+sHjbWXFOuY9IQVgvetsBglY4VVZ9i+0uS8cQ0hNUWCqi+aNKSCghV62To9pdyBCVLbn/xCeeRvNZymus5HzRJGrJbWwSgUsTqB+FvXihdagkipAIiBACS1azWMFvcdTHWFdqQr7yFA9gxYn9ue7TRq+fiXVm5zElxetL8eUz6haVwIn+EfOTv11PWRhvl03pXX77LZU6JA4h3o2lAcBJtuHx4/C2zoqyNNvqR4/hwkcucEhvQ7auz3eqt/LpGVOA07BjhWVDWshjt7ORKI/BB++PmyJmSRgVO5I8RDkhZy2GUT39mNMdlUDO/1BJ08/JFm7VAtgMB5arfElA2p3H1/KJL3BQ+KOHNC1LgRP4Y4VlQ1kYblXyymVMC+0HkmxeULLIfxN/KyztCk/aDqBcLlCcVECFwypV880J5gky5Vj621OkOQjBA/6o+qBML0LppeAN//aQ6aUs6QJsH7/k24F3quk+6mMWk/Wfxd+wB+e8/++krGRImJgYQh9PuHv6joTvSPWUtlyOZ3T6JH5rRyQCJdWc2nM/ehqmhC78B9wFQdj7mk1Os/7n/7OtGlFDx3NU5vygWmfYnf2lWP+dRs3ourp3x/894ZrnKEc/3m2Nd+fVvwYL9J49FEH5SxWHZHuNUHUCZ8beWSZ6T44eXfKgnc3Ysh32shO2P5V9ezEQ6OCemw/5xFRGEBZV7B1rz2wASx406qeIAtkfI4QCxCBgTmaMTeUt3aj+SPs///e+yVcVCHAoVXviOu+QZMwbQuXVS/QW2R8gBAT2VYMRTabJHsZEruaIqCScl/NVObCTVgESN7GAYkzYgc03DZ3EA2yOk5xa8/gJ80InZwSbW3/TUk8zE7uH3jNH1k9VbuwQNBgRsD5fphxrKcZhWTKeYZWKndhzLU9dP37DMCSK7rgRxlV3nb4x6EJD6C20PlwOMxax+kHKgwj8ID8xOKhhckdc7nrH98eotL2i2k0YA8XmH21crB5Bx0sD2YDnEYNXqSX8tnc9O7VfnTbGsUVKPK/GXWv9V+Kkj0Mz7gERv4XdP3RKk4oC2B0sdzRNSARFSARFSARFSARFSARFSARFSARFSARFSARFSARGSCoiPbJrGzOjrKS/7FxR13sx2OOf9SyFDdhLghPDt6z7DLBmdFctGzuywAR0fO2/MPI86oaRHCbJzQAMCyUKteJd6xD9ARHQ7K+9rET1/0QSfO1rrxIi3KHVLO70BiZku8Z+aJBdn97/4Qp0VQ3UxWf6e6/7ki3P+S/yz9NUlaW1/eslKw5tO5fTPYvTPLrLhuN7aLo7kgYhNliAZQpj77VsV9e1rNqA/24ldBiq0im69eqMSY8ofj/z62fuuNIoT3es5egOS7/Biv7kR9kcB4jO/7NLmiMfG//DzXLfRgIC+uiSDiIye/rtTORZx8FvO/kirKn4Vu5xnZuFUCHGe4ZNRy0n+IyuAjs4uhmIK9VyXIHU0HhBPg55dFkcK0Ik4zU8o4xwJ02W53Jub1umrSyrIhjE4gyoGpVLpLHaxq7vO4+TmJC51nv9jhyqAig4AEpNNr0UJVWua0p6oYqvBgPh/zJD4Lb5mZwF6IqfBWKlfdYVl3QFy9NklFWR/+r1rkgc/vdQ3WqRXWdSxK0AyhKikOmoLEEiu46S5sNQxMnrLmPRDzMivXmcoQWJO9MQG9MzErSohKEFAX5egZyqnb04voQrQNPF7JUiFUCVIRZ1WghQSXgF1jeocdZeV4T5IZEOvcclbJC7xGKWGqvmilj+A+pYP2olVv7MWmmT/eI7YH/PiQssHGUAqhPJBKmoLUMQH8dO3f3qvSpA6alWz1i02DmvF2O148J71HFQbpUuXaHXUdyRF4X4l2g6m+EvuPi19fUkFERPMJ7aKqrOyFVtpr6Zit6qYDMHP/5QdrVUr1gFSrZiKThpRwTey6u7kH3nEL+0aewPHXe5Jw3dljewmheQOA9p0N1qtYEwhdxjQYaQCIqQCIqQCIqQCIqQCIqQCIuT/f/Yic/Y1br0AAAAASUVORK5CYII=" /><!-- --></p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="co"># Dev-dev plot for comparing models</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="co"># We&#39;ll compare the two models run previously using sequence_fpoly()</span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="fu">devplot</span>(<span class="at">jagsmod1=</span>modseq<span class="sc">$</span><span class="st">`</span><span class="at">FP_-1</span><span class="st">`</span>, <span class="at">jagsmod2=</span>modseq<span class="sc">$</span><span class="st">`</span><span class="at">FP_-0.5</span><span class="st">`</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASAAAAEgCAMAAAAjXV6yAAAA51BMVEUAAAAAADoAAGYAOmYAOpAAZpAAZrYzMzM6AAA6ADo6AGY6OmY6OpA6kJA6kNtNTU1NTW5NTY5NbqtNjshmAABmADpmAGZmOgBmOjpmOpBmtrZmtv9uTU1uTW5uTY5ubqtuq+SOTU2OTW6OTY6OyP+QOgCQOjqQOmaQZgCQkDqQkGaQtpCQ27aQ29uQ2/+rbk2rbm6rbo6ryKur5P+2ZgC2kDq225C2///Ijk3I///bkDrbkJDb25Db/7bb/9vb///kq27k///r6+v/tmb/yI7/25D/29v/5Kv//7b//8j//9v//+T////GqbNJAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAPn0lEQVR4nO2diXscNxXAxyFsjTGbtLgusC1tIGugARfIQtKB1q0nWzub+f//nup4kp5mdI12Ds2O3vf52Hk6fys9nSMVdRanFFMnIHXJgDyiAdqt6urJm6mSkqZkQB7JgDySAXmkI6CPliORgNS/9w5nJ6DLgDw6IyC/ZEAeyYA8kgF5JAPyyIkDKgrJIwMy6IpCEcqADLqOgB4+f/bsZV2/f/Hskx/FswUDerwqhPC+4vs/va4fvnj94ZuX9Q+/rRvexknw6Dq3DSr1TvQ7SuXty/d//rZ++OO3DW89JipRnamK7Z7eNVyRUvTw5Y+sMMFA9X4pEmSkP3zzVf3uEwEIc43/ZuaiCwH0/sVXxFR/mQFZ5OFz0obV2QZJ2RUFNtOcD6tmi2nFkLQBURONG7IfnlF5uaR+EJYWoMN2A79csmBAj1cM0NoRXJ0BZUBSMiCPLgPy6PyDVae3YRKVki7PB3l0GZBH165i16hiaR9M3oZJVEq6dgkiRgh6iWVxduvxNkyiUtKZl565kXa0ZAsH5JcMyCMZkEcyII9kQB7JgDyyaEBiytW1yWzJyz50yrWifUUnoCD6p6AzT3eQ3+5tiosHVB+2qwyIirmK1WxIlgHVZiPNh6iHbQZU52beq8uAPLo8J+3RGUsQW3mG5sztbZhEpaQzAQI0uZmnkgF5dK4qlqdca1srVlEb7drgsXRAXsmAPLJ0QKVn1WfpgLKRVpKbeY8uA/LogqoY2x9Nd7t+nPdJc9GN9DsG5u1Lg7dhEpWSLqCZf/v836QEffjna/QsA9KEVrH3L9h28jq/7UNkf67PB1FAD1+8RqVo2SXosF3pjuRLLNIOLRtQa6osA2qWIAMg+kLdh3/lZp5Js4so+kHPXze9DZOolHRBRtrubZhEpaQzVzHPiwhLB+Rcz9C9DZOolHRBRtrubZhEpaQz26AL3xF4ywYkFlezka7znLRXlwF5dEZApBlz759aOqDdik4qliuD+4a3YRKVks7SD6ID+hnNSYvzfsYDRCek5wNInhg13lCjOrulFc3rrf9EsawmDogOVleGY5YM3npPFM9r6oD8khagsW1QgCQGaECda6hRFFYrNNyqBol1sLBjxLmy2pq9b3F10z8FnXtt3trSZ0B1BsTFvXmhtDX1CwckNnGW+eSF5Jr55HQZkEeX18U8Ostg9bDd5JdZmNia+d26rhyj1XQAoaOfRwVUzmTCDB8ePp4N4lfXWDtB9eIB0cX5nf34qXrxgPySDKBJbFCApANoaJ3p5AX0Xq9tH8wUgIabVo0vQSmN5oW1uYcPQ8cH4ga0v0xnNI8B6aZ50LTMxwalDIht4pz8yHZkgxIDxF5mSevqmmltUGMLHn+ZJV8bocS40z6dq2vGXRgyz0k3RmFip30SN7PY7M9A8QXtUdRLEPY2TKJMOkGlSABQSx6mt0ECS5EsoImvrik0GT4+KUEHCyTQDwriMxqgNA4W0EmE8Bm5mZ94yrXBQtJJoKOYIiBVelIYaiRRxQyALLpB05Lw6S/tGiZ1kwPyyvCAEAH2r/w8tQ1iU67Tvy+GykijuEw9WM2AdGlXsVL2N6ZsxRpDi5QAJfLOqjA8rb5hAoACZJShhrnrnAEJnWVskQHVqK9j6PCcMqAuxtY6Mj1hQHqGgwB5wxxcZx1qbFzbg8YC5A9zcJ15A9XT7/hbmV5vnSLuBMg2mkgBEHSm+7+6pkjsTZ4QiQUURP+oEpSIzrIu9h1/r9frzR+xPiq3A5pyONHdSFe9zQdhKC5AyZauoZt5LeOOUpIBeRI1L0B0G7CzlY+zQZZEyXmN4DDH1Nk2khuOmzR56yFRpjKWOKBxl33Q1FhvYfaoSwaQVpASBzTyuhieW+0rzP50Q/eDHDrd9MwLkFd6ANQ0zhlQQ1qt14xs0CjvrNq7kMkDcvcRNW/HJMrOJ3VASayLpaIL2Eju8hYZcZHWGUGdbZCri6h7i4uYmZ978W+4vyl0QfukmfR4M4sCZLHUiQMyS483s6g1L/5n6sXBXgD1ejOLJFQUClaAvwl0wf2gvm5m4SsbQIV/hH/TlOCzO3q6mUUvOPiZ299kum5ndxx/8UiBBT0MTnAqgMxndxwJqGhITIJTAGQ8u+PYm1macFx8kgdkPLvjuJtZDHxmDMgvRwGy7/3pFuYoupEANYrOnAGhszv6mw9qoKmtY4wOYY6kG6cEtQHZFxRDwxxJNzagxjsXHn8J6Mz9oL5vhzJZ5YQgdC5B9G0E95yZC1DRmnw3NuwJQYipYrsi9gwzTOKEARHZxbVibUDmrmFCECJLUOTVNToge985IQjdx2Lu+lWH26CiDUioE4IQM5r3iLcV4xjujXwmOawtsX4QELlv0KlPBdDRryLoPWdsfk4C0PGvImglR7fOp2GDjt5pb2+9AhKVkm6wVxG8hBKC0H2o4X8Vwb1WUjRljAWaYWSQLXgtPqdWgvzSEVDHRKWkGxqQetIhUSnpDFOuMnNRRtpYdkzFKCEI3Y003ycdc22EuW6dGKBjdtrrdLQZxX4SPFdABRqKqsIjIz4hG0Sl+6sIwKRZuxLKaL+tGFyf5fdWa4Ba1iehjE7czFt6PgllNAMaSNcPIEsNSymjkwJq88mAtMAzIKu3enmAYsZiNj4pZXTCEmQtP0lldDpADTQFHlQklNFeAXV549BQbo5OVEq64J32liPbnXxSymjfo/nWTnvL1TWLBdTaaW+5NsLJJ6WM9mqDTDvtLVfXAJ3JVmUGl+Cd9para+ylx/PNzEUX3Mzbrq5x4Ekqo4MDytdnKTHutJ/46prJdPYS9Pipvgtv8iv8ptE5qtg8bgsfWucCNIfbwgfXufZJ5xJUO420c6f9csQAqJt85Hcya38gGZBHOk659hDxXPyBdNz+sjzpuLtjeZIBeaTj9pflScftL8uTyGZeG8F2EO28r3BpX/jawV9knCBxgPSZ/A6infcVLIaL78P9RcYppOPJCyD6LFq46Od9hYrp4vtwf3FxSokrQfo8bLio8746xte6tjzcX2ycIHGA9Jn8cNHP++rgr3Xxfbi/2DhBNEC8mgV0g2JLEJMIm3BMCYqNE6S5Lka6QqX3yNtoG8QkElBMnD0DeuTvYwb0pPWZ/HDRz/sKl/bF9+H+YuMEab1xuA4aahzRD3oeUTOP7QfFxAnS2N1Rnd3y2zWygDT3B62cU9ILlPgZxYVIBuSRjicvLE86nrywPHEeLHDY8tGrYQZt/yu+emboEwiVWY21LikN63OhfjXhSUA7Dg7bDWSMx9DcjKCLBxBDsz+3z6F1BhQo/S0d8CTsFG4yUoCMlU2VQZwnL0A4rp7RUICiCotRaBLICFNSoAUGMka/BaxqC9HqgekVCgOipZLmlu2l3rAM0LC/fvKG5YX+Yqq1zBuowScPq3zyX+zw1Tmb4aUu+N1vYjKKuliJ5/uLv/HHKBIW+quLNyo9NKz1Xg9QJKFaKeC0EUKAkAq2iWNe1crZzEM4FYmTmW4SNqdxviF/aVF7vFKAWK0o4TOf/Kdq4RMShh2ek0cld0GfCZc1sKCf6c/+HEow8qtHTtLDwipUgDxQ7qhGJZLlCTK201VGMQH6X9NIb6CukNTtL96ItLJHpQL00x1/DhEKtfRJv36mlQ6pbVMeZBwCEPtcUZAbCUj4lZGL9LCwIEDhUTjCFFj4kDEoraGAdqJY6kZ6f87qhmjPwBUJlX3XJIGyirEaeibyK9TCJw1MFEHkUOQHxyEAsRAUQByJCB2lR/0SHqWjNiDUMIcCKrmdqNC6Dw+H1rAadR/ZnJoB0OPV2S3KjwQkfFZPv9+uWw4xINRFtQESflHeRXqOBqTZoBK+KgmI+ame/qdAqURVtcKmi1cYWQNwsqozrYrRci58Pn7KjGrDIa5iKA4GiH6upFHTIhGho/QgQOAROTq+BDGPhCHuFMp+ELV5JGUiYTxTj1crVh+pKTxsz1iy9ucSkFALn7QOr2T6pUPyS9hU5bJhpDEg8CvsL0qPAqSM9KplpOnbKMcA0jrNIpyyWDO7diZNAG7mWdH8A+ld0HMq/w5fZq038yzXrK5SLXbISahmHkoR04lmHtsg8KtacJWeuhWgcIQpVKqZjwDUW/dsEGkmz7Uf1yrukUVL5gXoQvbLaVWLHFYHLEogmRMgZsOE0FYmbtoh4J45JPFb8BYieUbRIxmQRzIgj2RAHsmAPJIBeSQD8kgG5JFQQDAHJwY/qtOPuv+awPNWt1W5b6hsAeEk6OtPh5su/X4eHYql5H1iEiwfIIv0kLE36ip3KEE4B35AWrKMoXTr8gcQdAuLrkJ5323EHz7oLflMIR3Moqm7zoDY/B2fxGMrCDBh9+vP4CmbEKFzIBdsteUXn7Fp7D2sPwj3oILZwMs7UhpeKSeXf2XTmnxFRmwKZJ/4BxYbL0GwjEGD+90tRH24+boo1pVY/OAz3Sy6HV8IYUmA8vd4DcRIoHw2nKRGPowAxE8/If9T0nTClQOi0+VERUbKNHDyh80X0xlcAUhzDyruhWX08v/KyTmLg37l5A8PFeKH2PksPvEHPthzgo9HLVZClAcRHS6GbPDJvw1axQ43/9j2UYJoGkgQohxcC0AX7DF9APMtFMk1reGyBGH3oAIvJWGw1p1IlOBEhahiV2WABcdxwXP6Qz6CB4hOA8Qm1m7Y0gotNOVaVHlCDs0zdQVEf9Fg6f/sHiAE6Aom987Zb8jhTgFquCcq8LK//L4ZJPV+eSe+aGZFIUQROwDiPlglFVEjQFpyG0aaCkkdrVHE4eUdAJILTnGA1HdIJ5BUFaOAVMWFSqiVIM29KEHXkNNXl3e6E82ljL9VgsAHlCCIOqwEAaDH3zNApVxxojUSzTrG26A9X6LAJYKpaATcBdR8Vqmf6O6RDarYkui61oMkPzRH5I888gnZIAkIfIANgqgRIIcNYnPTf3lDCxYvq/2UIGgWDtsndEUQ2ihRuvg+gJ1sxUgXg7YdxOFvqPlE7oUKvLBV1wvsBOosb8XOhFWD2FEV4z7o81/e3ELUGBC0YhAdDwS8l7zqyq3z8IXQphCtP825J61Pvx/ZTbLJjAGVqrFB60V9y4wBjSPLGotBv5sLjMVg6CWHZLqjZY3FWL9brUFrHWc5JNMdLWssVq1q0XOV5Q+GXqq7BY6iAc18LKaaPhiLQQkSQzLQxXcU5z4WU9sWYCwGQy8xJGOC9zYsbCzWPDVht4GOMwzJ2EPN0bLGYq0d37sNDL1gSMbi0RwtaiymZR3GYmLoJYdkDYiLGovxIbtIQil3hKkh2V5sOo1pxZKTPBZzSx6LJSEZkEcyII9kQB7JgDySAXkkA/LIz6spszihcVxWAAAAAElFTkSuQmCC" /><!-- --></p>
+<div id="table-of-model-fit-stats-for-comparing-models" class="section level4">
+<h4>Table of model fit stats for comparing models</h4>
+<p>You can also easily compare models by calling the
+<code>summary()</code> function on an object created by
+<code>sequence_fpoly()</code> (or by using
+<code>summary.sequence.fpoly()</code>). This outputs a tibble (data
+frame) of model fit statistics and an indicator of convergence based on
+an Rhat threshold (which you can specify in the function). Note that
+this is not a fail-safe test for convergence, but is a good rule of
+thumb. The default cutoff is 1.05.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">summary</span>(modseq)</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="co">#&gt; # A tibble: 2 × 5</span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="co">#&gt;   model   totresdev    pv   DIC converged</span></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="co">#&gt;   &lt;chr&gt;       &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;lgl&gt;    </span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="co">#&gt; 1 FP_-1        565.  13.2 1072. TRUE     </span></span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a><span class="co">#&gt; 2 FP_-0.5      586.  14.1 1094. TRUE</span></span></code></pre></div>
+</div>
+</div>
+<div id="predicted-quantities" class="section level3">
+<h3>Predicted quantities</h3>
+<div id="time-varying-hazard-ratios" class="section level4">
+<h4>Time-varying hazard ratios</h4>
+<p>Time-varying HRs (or log-HRs) can be calculated using
+<code>hrcalc()</code>. This takes the JAGS object, and you need to
+specify times, a vector of time-points at which to calculate HRs.
+<code>eform=TRUE</code> specifies that you want to exponentiate the
+calculated log-HRs and return HRs. It might take a bit of run as it
+performs the calculation on all MCMC samples.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>hazardrats <span class="ot">&lt;-</span> <span class="fu">hrcalc</span>(jagsmod, <span class="at">times=</span><span class="fu">seq</span>(<span class="dv">1</span>,<span class="dv">60</span>, <span class="at">length.out=</span><span class="dv">100</span>), <span class="at">eform=</span><span class="cn">TRUE</span>)</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="co">#&gt; Outputs will be on HR scale</span></span></code></pre></div>
+<p>The returned object is a list which contains a data frame of
+posterior summary statistics for all the HRs (every treatment vs every
+other treatment) at every time-point up to maxt, as well as a full array
+of all the MCMC samples for the HRs.</p>
+<p>These can be plotted by calling plot() on an object of class
+<code>&quot;hazard.ratios&quot;</code> generated by <code>hrcalc()</code> (or by
+using <code>plot.hazard.ratios()</code>). reftrt can be used to specify
+which treatment should be the reference treatment, and all time-varying
+HRs will be plotted versus this treatment.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">plot</span>(hazardrats, <span class="at">reftrt =</span> <span class="dv">1</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+</div>
+<div id="survival-predictions" class="section level4">
+<h4>Survival predictions</h4>
+<p>Predictions at specific survival times can be calculated using a
+specific study baseline. This can be done by passing the JAGS model to
+<code>survcalc()</code>. Within this function, the <code>times</code> at
+which to estimate survival quantities should be specified (for plotting
+it’s best to choose an even sequence of numbers).</p>
+<p>The important thing to consider here is which study should be used as
+baseline. <code>refstudy</code> takes the index of the study to use as
+the reference for predictions, and <strong>generated survival quantities
+will therefore be specific to the population in this study</strong>.</p>
+<p>Note that these calculations can take some time to run (depending on
+the number of MCMC samples in the model and the number of time-points at
+which survival quantities should be predicted). To speed up the
+computation a smaller number for <code>n.mcmc</code> can be used. This
+defines the number of MCMC samples that should be drawn at random for
+calculations. If left as <code>NULL</code> then all the samples will be
+used. Note that a smaller number will lead to more MCMC error.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="co"># Generate survival quantities</span></span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>surv <span class="ot">&lt;-</span> <span class="fu">survcalc</span>(jagsmod, <span class="at">refstudy=</span><span class="dv">1</span>)</span></code></pre></div>
+<p>The resulting object contains the following quantities at each time
+point and for each treatment, both as arrays of MCMC values and as data
+frames of posterior summary statistics:</p>
+<ul>
+<li><code>&quot;haz&quot;</code> hazards</li>
+<li><code>&quot;cumhaz&quot;</code> cumulative hazards</li>
+<li><code>&quot;mort&quot;</code> mortality probability</li>
+<li><code>&quot;S&quot;</code> survival probabilities (note that S is upper
+case)</li>
+</ul>
+<p>You can easily view posterior summaries:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="fu">head</span>(surv<span class="sc">$</span>summary<span class="sc">$</span>S)</span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a><span class="co">#&gt;   trt    time      mean         sd      2.5%       50%     97.5%</span></span>
+<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a><span class="co">#&gt; 2   1 1.00000 0.9589927 0.01548574 0.9224581 0.9615614 0.9818628</span></span>
+<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a><span class="co">#&gt; 3   2 1.00000 0.9756052 0.01199000 0.9451065 0.9779864 0.9908054</span></span>
+<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a><span class="co">#&gt; 4   3 1.00000 0.9310874 0.01219314 0.9051043 0.9322789 0.9516684</span></span>
+<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a><span class="co">#&gt; 5   4 1.00000 0.9171438 0.01878698 0.8771321 0.9184813 0.9504682</span></span>
+<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a><span class="co">#&gt; 6   1 1.59596 0.9014092 0.02857749 0.8346516 0.9046147 0.9469001</span></span>
+<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a><span class="co">#&gt; 7   2 1.59596 0.9337928 0.02441598 0.8752530 0.9375368 0.9680977</span></span></code></pre></div>
+<p>But a much easier way of understanding the data is to plot these
+summaries. This can be done using <code>plot()</code> (or
+<code>plot.surv.predicts()</code>) on an object of class
+<code>&quot;surv.predicts&quot;</code> generated by <code>survcalc()</code>.</p>
+<p>Within the function you can define the survival quantity to be
+plotted (<code>&quot;haz&quot;</code>, <code>&quot;cumhaz&quot;</code>, <code>&quot;mort&quot;</code>,
+<code>&quot;S&quot;</code>), the treatments to be plotted (<code>treats</code>),
+and whether the 95% credible intervals should be plotted
+(<code>plotinterval=TRUE</code>)</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">plot</span>(surv, <span class="at">quantity=</span><span class="st">&quot;S&quot;</span>, <span class="at">treats=</span><span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">4</span>))</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>It’s also possibly to easily calculate the Area Under the Curve (AUC)
+for any of the predicted quantities using <code>auc()</code>. You need
+to specify a time interval (<code>tint</code>) within which AUC should
+be calculated, and also which quantity you want to calculate AUC for
+(default is <code>&quot;S&quot;</code>).</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>auc.surv <span class="ot">&lt;-</span> <span class="fu">auc</span>(surv, <span class="at">quantity=</span><span class="st">&quot;S&quot;</span>, <span class="at">tint=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">50</span>))</span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a><span class="fu">print</span>(auc.surv)</span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a><span class="co">#&gt; # A tibble: 4 × 2</span></span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a><span class="co">#&gt; # Groups:   trt [4]</span></span>
+<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a><span class="co">#&gt;     trt   auc</span></span>
+<span id="cb17-6"><a href="#cb17-6" tabindex="-1"></a><span class="co">#&gt;   &lt;dbl&gt; &lt;dbl&gt;</span></span>
+<span id="cb17-7"><a href="#cb17-7" tabindex="-1"></a><span class="co">#&gt; 1     1  4.94</span></span>
+<span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a><span class="co">#&gt; 2     2  5.18</span></span>
+<span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a><span class="co">#&gt; 3     3  8.12</span></span>
+<span id="cb17-10"><a href="#cb17-10" tabindex="-1"></a><span class="co">#&gt; 4     4  4.55</span></span></code></pre></div>
+<p>Some example code for how survival prediction plots could be used to
+compare predicted survival across different study baselines (using
+<code>ggpubr</code> package):</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="co"># Loop over studies</span></span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a>glist <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>) {</span>
+<span id="cb18-4"><a href="#cb18-4" tabindex="-1"></a>  surv <span class="ot">&lt;-</span> <span class="fu">survcalc</span>(jagsmod, <span class="at">refstudy=</span>i, <span class="at">n.mcmc=</span><span class="dv">500</span>)</span>
+<span id="cb18-5"><a href="#cb18-5" tabindex="-1"></a>  glist[[<span class="fu">length</span>(glist)<span class="sc">+</span><span class="dv">1</span>]] <span class="ot">&lt;-</span> <span class="fu">plot</span>(surv, <span class="at">quantity=</span><span class="st">&quot;S&quot;</span>, <span class="at">treats=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">3</span>))</span>
+<span id="cb18-6"><a href="#cb18-6" tabindex="-1"></a>}</span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a>ggpubr<span class="sc">::</span><span class="fu">ggarrange</span>(glist[[<span class="dv">1</span>]], glist[[<span class="dv">2</span>]], glist[[<span class="dv">3</span>]], glist[[<span class="dv">4</span>]])</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p>This isn’t the tidiest plot since the legend is repeated…but you get
+the idea of how the choice of reference study affects the predictions. A
+better way would be to use the posterior summary data frames from each
+set of survival predictions and using separate panels in
+<code>ggplot</code> (using the <code>facet_wrap()</code> function), but
+I don’t think I need to write a specific function for that because it’s
+probably not terribly useful (let me know if you would like it
+though!).</p>
+</div>
+<div id="plotting-survival-predictions-with-raw-kaplan-meier-data" class="section level4">
+<h4>Plotting survival predictions with raw Kaplan-Meier data</h4>
+<p>We’ll look at adding Kaplan-Meier data from KEYNOTE-189, which
+compared PPCT and PCT (treatments 3 and 4 in our analysis).</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a>ipd1 <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="fu">system.file</span>(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;PPCT PFS ITT PDL1 LT50pct KEYNOTE189.rds&quot;</span>, <span class="at">package=</span><span class="st">&quot;BristolTAG&quot;</span>))</span>
+<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a>ipd2 <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="fu">system.file</span>(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;PCT PFS ITT PDL1 LT50pct KEYNOTE189.rds&quot;</span>, <span class="at">package=</span><span class="st">&quot;BristolTAG&quot;</span>))</span></code></pre></div>
+<p>To add the IPD KM data we specify <code>kmdat</code> as a list. Each
+element is one study arm of IPD data, and the elements
+<strong>must</strong> be named to match the treatment names (indices) in
+the dataset, otherwise they won’t be plotted. An alternative I could do
+is to just have it so that you pass a long IPD data frame to
+<code>kmdat</code> that includes a variable for the treatment. But I
+think that requires (slightly) more data manipulation on the part of the
+user, even if it does syntactically feel better.</p>
+<p>As you can see, the model below (1st order fractional polynomial with
+power of -0.5) fits the KEYNOTE-189 data very poorly.</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="fu">plot</span>(surv, <span class="at">treats=</span><span class="dv">3</span><span class="sc">:</span><span class="dv">4</span>, <span class="at">kmdat =</span> <span class="fu">list</span>(<span class="st">&quot;3&quot;</span><span class="ot">=</span>ipd1, <span class="st">&quot;4&quot;</span><span class="ot">=</span>ipd2))</span></code></pre></div>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASAAAAEgCAMAAAAjXV6yAAABGlBMVEUAAAAAADoAAGYAOmYAOpAAZrYzMzM6AAA6ADo6AGY6OmY6OpA6ZrY6kJA6kNtNTU1NTW5NTY5NbqtNjshNr0pjkmVmAABmADpmAGZmOgBmOpBmZjpmZmZmtv9uTU1uTW5uTY5ubo5ubqtuq+SCa4iJYpCOTU2OTW6OTY6Obk2ObquOyP+QOgCQOjqQOmaQZgCQkDqQkGaQkLaQtpCQ27aQ29uQ2/+YTqOrbk2rbm6rbo6rjk2ryKur5OSr5P+xsLS2ZgC2Zjq2Zma225C22/+2//+7ub682bvIjk3I///K58nSvNbbkDrb25Db///gyuTkq27k///r6+v/tmb/yI7/25D/27b/29v/5Kv//7b//8j//9v//+T///9tALHVAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAQIklEQVR4nO2diX/bthXHaS+uk2Zzj1HusanbmqU77Gzd2prtjkZbJzOVVSu1os2Owv//3xge3sNFgIIkUyIlvt/HImkQPPTVw8NFEEnBWqik6RtouxhQRAwoIgYUEQOKiAFFtDagt5pWnRQWaH1AsLgJ7AiEbSIaA4pEY0CRaAwoEq0VgG5//b1cv/7snfd/1CsUAyqKV++8JwG9+fqsePlztSIxoOLFu/9AC3r9++/BmGhFexlQoZPY7ac/Fq9/9y2tCioD3TSrNgF69b4kQyvahxYUOJwtCMWACg1ogQ9K/OM7COjN108wF3vi52IMCD4LykG+CXUJ0CKpbJ4BVYgtKCIGFBEBShlQhRhQRAwoIgKUMaAKMaCICNAlA6oQAeoxoApxEouIAUVEgJ56RWkGhGJAESkn7aUxBoQygEqnYEAoncTKp2BAKA2oXBtjQCjqF3uepUl3+8UWSZWD2AdVSAFKGVBYBOi3aZkQA0IRoJFnQgwIpX0QAwpLAXo6ShlQSKpNmgFVSAHKRpzEgtI+iAGFxT4oIu2D0hEDCkkBuswYUFAqiTGgCmkflJa8NANC2T6IAQWknjDrlfN5BoRSgERBKGVAAWlAKQMKSicx8EH2WboDSD/1+/Id0Jlcv1cezAI+KO0kIHf0EwzUeHFm7TY+qJTGOgPIGXkAYzTefPOttVsDuuwqIGfsCpiSSHKQ0Ap3OFTveZo00fPTPCB79JNc3/7KtiLtgy6zxGl17aQFvdJjNLQfMklMFISKLgKyfdCLJyrUByTbOywT6gwga/QTJiwwozd/K2fz1CjdQUBUDpLDoTCliXLQuzoj04AuszTtJqDFsnxQ6jghBoQyPuhS5PMMyJPxQQwoKOODSvk8A0IZHyRbpRlQWbYPYkAB6Xd39C5HKScxXxagzHmIigGhNKCMAQVlAD11W4QYEMoksRYBmp8nqKPQ3qL473/C4Qsi1OOD7Hb7pi1o9vBijV2VEerxQXY+z4BQJR/UNkCzR58nh0NIcodD8d+xMPETWJ7MHn5xTNt9TJMiAgb2ZYTS6eryQa0DdHwEX18sxg+u7077Yn04hF2z4wfXxTiBBQDECBiIEUqqwwdhXUOdqS2A+kUxBesRdP53jeEIqE97xX8qgvp/Qz4IHxFqGSBYjjFLE6lmKlYHCAh2qIWKoP6vFZDqf8l6T/M0T2+23PWzFKAH1zLo7vTgQluQA4gibAQQLOSP2Xs6srOxFlnQ9AC/7xQ4TAMWpCJsGJCbz7cI0PxckBEQgMPs+OACnLUDSEVQ/0tv7qoGH9SjVukk8pWiYbUDkrk4GMlArL4UX36QHDmAVAT9/8Arg9cBCJKY6dhoGlDNqs8HMSBXBtCklzEgXwZQBoBMWZoBoWxAlwzIlwFUAKCEAZVkA4IngXU+z4BQjg+y83kGhLIBQT6vnRADQtlJDB4RagmgNKhw3KVUj5PO2gNoFFDTgNyCEANCOYDAB6muHwaEsgBNeuCDGJArC5AoCCGgxAqz1XVAWBBSTUL7C2h8cFHcnfo9Q2E5gC4RULHXgKBdEvqJ7k6JkJkEgcZBVc4OJQAlI5WPtRnQFPsRV5EGND8/of4iauq3hkPh4/XVs0PBmLFdADR7NCzGFc81VEkDku3VspV/ipDNUAQawVI5OxT5oPYDAgGkVeQCksZDgMxgFhoHVTk7VNZ7nqd5Dn1j2+scqwKU+HIArW1B8/M+9mUXA0xiZjgUjYMKzQ6F29oHwelabUHQ+RM+sErGScs+/D44sr78350MSvih0OxQuD3pZTsCSKSUD1YjZGXzA8jh5+cKsetyBKDqGep0QWgHABWDfvjICi0zHIrGQQVnh5ISlTHlpZM2A4Iu6HtYUFlmOBSNg6osB4nKWKLTWIsBweMe6/ugFVXyQWRBLQe0hmoBlDEgXy4gK59nQCgbkCwIpQzIkQsoG41aAqiNjfZFNhGAVHW1WUC1qx5AUBAiQEmzgLJsMvE/4bhLqZ4kBoBUGmsW0CSkcNTlVA8gKAiBCTUPKGsnoKzdgNqTxKQT8k/ZdBJrHtBEAkITCkyQ3TSgcNTlVKMPGrUBUJt9EGVjgRnEmwbUfBLLrHw+MIN400nMAgQtyyuppiQmAWFRMTC9cdOArP1jalBeWvUAKiaZBcg7adNJzOyevf1RP3xgle4/HEp2/Fxl0O0ju36EttH5UwUoSSaT8kcnsfmzr5pJYplVEAILKp216SSmAY1PGvJBWFJMJKEb/6xNA1I7Z4+vmwKElTEDyD1tW3zQWI3QXEG1WRAVhKj5LvoO7qbKQY0lsSx1ABVNAVrsg5oDJAtCiQ3IPnHTgMJRl1NdgLDRNTUt5A0BamldDFulMY3lvgk1Daj5uhgVhBILUOT9tx1rD4JfrtcKQAW00Jc/91FdgKQTGrUAUN2qzQfp6mru52MMCJy0ckK5n48xICgITaioaAAlSfUoze4B0mkst58VYEBKmQXIIsSAlLJs0lNJjAGBfB8knVDCgEi+D6I0lttPLFUOIdsHQOah1ttP5JQswcmPSNlEFRUdQMUeAzKDe+DxehiOEJz8iJRRPj9KS4AqxrfsASDzYP0rwPTiLDz5kRIBSkqAZGloPwG5QzPEVnjyI6Wrq6sszfNEdv5g74/SRnqBmgfkDO6BYQjhyY+UoCCUjtx2V3WN0EX2y4Jef6Ym9/Hm9lEyTsh/8jZEaPcBWYN7bj/R7rkS0AQBJUnqP5sceOBjDwCZwT3EJzz5kZIqCI1y34QCzzPsASAz2seaBNKf/EhJFoRS1e7qEroJpLI9ALRYISc9qQa0zBMf+w1IOSFRkk6CgOL99XsPCJ2QAmQRuglcqXuAMg3IS2MMCAQFoSJdAChJ6pxMc/cAFRqQ56Z1tI4Dwnx+IaCFPR37DihTgFQa04RMtI4DkmksH+EYcQZUlG9fA4L3S9uEGBAKndBiQPp6XQQETqiQLYolL2RFq21+kt0EBGksRzK2G7KjdRmQdEI0cl0BkoQcQDW9VXk3Ack0RmAqAKkidScBSSd045uQ/y3vP3p8RwGJNEaAVJ2ehm94112umXqXAQW6Yq6usqurG9nvA2N/kiT3uoBMX9A9O4PaDwgW5d93EvJCOHyjrPsObd1JQFkZkNd0ZnTjjx/vBKBsclUYQosAYXZWCgpFCwftJKCiDIiUBwjhoesP6dhNQOCErjLPhPKR/wofOnTtEQu7CShzAanCUB5IZupQ9T7RwNlCVyh2H5CpbuhElgccUenQJPyKyn0DJCsbE49QHnDV5UM7AkgQupKja1JEA88yJATIJeQBClbP9g9QRoAsG9KASg80lO8kKWf74SvsPqAMh/hZqSzRFddSX5mrG8dlL4pW7C6gAiyoTCg3VdfUb8jXsltmEw9VKdrOAlL1jcIihICSinZqrdDZApT2AFBWJjSylXrNsKRKJ+0a1K4DupGAnFSWp5ipJYn6pKELdyIXgzBrJK0pB5Vespp2GRAmMhytnqa6JO0iyv13rHYGEJWnaTR2OtIFRRtRrtNaUtDnxtquCDMX3WlAVCdThFJVUBylhlFughbk/OUOERO024D0+H6FyM7D8L985IYFOz/ancTMcCjaqnzpvyMKo1fxYk9QkaZlSN6bscOvfq6s9DcPyAyHoq3qyY8cmTC0oQyaiGTtzMGSq5dhW27J4qRgtdiCzFAE2qqeeMSRFWZeDwGg5KLXkx+LTvgd4mkZllFbAJnBLLRVOfnRMsoy+GTlT7rGpy39YmY4FG1VT37k6L59yktGax7QAgsCMaAafNCCoD0AZIZD0Vb15EeOOgPImvxonXJQJGgfAC0WA4qIAUXEgCJ6q2nVSWGB1gYkteRdNhKtJjGgiBhQRPcD1AExoIgYUEQMKCIGFNE9ADl11wrR28/iUaHBOxrtzdf+jMGb1vqA3Db8sOjtZ0tEfSk4RqO9OIPWzWUuXJ/WB1SaTTwoevtZPOrtb/5wFj0j7F/ywvVpfUCl+egr5TXWBvTmm38Ks4hFu/3075DElr1wPVofkNuGXyloh4xGffkE0k0sGrzoSdBZ8sI1adMWJN9+FjcN6ViWiLaUPdaqzfogertXLCq+4upJ1Af9UZLZFR/ktuGHRW8/WyIqWFA02oszNLb4hevTZstB6u1nNZWDxH54l+yOlIM6IgYUEQOKiAFFxIAiYkARbQnQ/JyGEhzNHl5s55I1aYsWtGtoUAwooq0DEsvZwy+Ok+RkJhZ9TH2Hw+3dxopqBNDxg+tinMDicDg/PyqKsdhuqZoB1BdruXh4MQXruTvtb+8+VlMzSeyC/hMLnD13xelzt6jmAbU3dUk1Dmh60O68rXFA83NhQi2m1Dggmc23lw/XxWJiQBExoIgYUEQMKCIGFBEDiogBRcSAImJAETGgiBhQRA4gaCUOtV3NHg3FX/D4UHhV3EAEvWVdOnz43WlCLUfQxLa9RmwX0AoUFuyKAgpElRt3H4ha/TT47efn/WJ8JDcH/WXPXodCgGZvf3Q4pD4H8cMdfHmaHH4ndoltce+zx3+WezACHnL34eeyyYJiPBqKLzF7/APFxND5s78IE5mCmcBB+nA8g1wChcHBFyG+dx8O6VrzZ1ttGwkCOu7LH1P8C7c8ffADfo3Bidi+nh3LFUUgQKcPrqH1nWI8Gk7FxgnFpFDovpgdH9FBzuHq0tRihGFT2VbdV7f2+BoNDHCb4M3L90FH2u7Fr6Z/XvhO4kcU9yh/foyhI0CvhPhlTYy7j6//pWJSKPzy8KFT2IerS+P3DqZQAI2AZCPb9qwoaEFyNQBXCD+cAgTB4s40IIyAgODWB30TY/7sy4+vKSaFlgFZhxcOFQ/QALr0tQVhUH8zOHxVAQKbsB2EZ0FOBLh1x4KK8S/J1VRYkHN4EQLkJjHjg6SaByQ/0KQO3+M7xwcZu4D2ZUpiR5a3oV36POSDHEDO4cViCwLNz08oF4PrzP/UaDYvV6K08ZOP+jIXE5jsXIy+NkZQFvQLNxeTX0HFVLmYk8T04VYu5txFSVgOoiO32MhfT0na8g6k2U+XPvjf7X1yodgYoPHyv/H8r7XcwqbEdbGINgAIizSmvjA/X/nRBNcNQU7hyAvYoDYBSH4781DCClUz9xRKHo9xUyXpemSyJZl9yXyQsjeo5Lk1OrmX8jnQNMFDZLZJ5xC5HdbtCJs4Tb/+267QRi1oIMsuVBSCLXhoSm1SBQ3qetcDVciB8uD4SJezqBCV9GXdjs4/f/bVjicx6YOo7oT1LbNlBboFcUCjs0MDCIIFRVm3o/OPT/bAB02p2AhlOlmxUFtWoMQg63oUJg8+hg0DCKttfVm3o9M/vt4DQPB4JhmFsgPaY20aC/rQ9slYWXEtSNbtUOPtPrK3KUDy4VVTNTNbbo0O63pDDCuwooV7IbGND5UPch+y3gcLkl4YsyhKWLRlbZoduATJRhBB4HAoLOVn0nxknVDV7aR2HNBGtELdrl7tCKAV6nY1a0cANScGFBEDiogBRcSAImJAETGgiP4PsTc4iPaA58gAAAAASUVORK5CYII=" /><!-- --></p>
+</div>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,124 @@
+---
+title: "Extraction of digitised Kaplan-Meier data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Extraction}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup, results="hide", warning=FALSE, message=FALSE}
+library(BristolTAG)
+library(survival)
+library(readr)
+library(tidyverse)
+```
+
+This vignette describes how to use package functions to generate Individual Participant Data (IPD) from digitised Kaplan Meier (KM) plots. 
+
+We illustrate this using Overall Survival data from IMpower150. We do this just for the ABCP arm of the data, which is subgrouped into different PDL1 categories and therefore requires aggregating and subsetting. But before we do this we have to convert the digitised data to IPD.
+
+
+## Converting digitised KM data to IPD
+
+We need `.csv` files for each KM curve we have digitised, and this should contain two columns. Each row corresponds to a separate point on the graph. The first column gives the values on the x-axis, and the second column the values on the y-axis of each "clicked" point. This is the typical type of data that is outputted by plot digitization softwares such as WebPlotDigitizer.
+
+We can clean the data using `clean.digitised()` which ensures the data are ordered, starting with time=0, and that survival ranges from 0-1 (i.e. is given as probabilities).
+
+```{r, results="hide", warning=FALSE, message=FALSE}
+#### Load the .csv file ####
+
+# In this example we read from the data within the package
+km1 <- read_csv(system.file("extdata", "IMpower150_ABCP_OS_TCIC123.csv", package="BristolTAG"), 
+                col_names=FALSE)
+
+# Clean the data
+km1 <- clean.digitised(km1)
+```
+
+We then can use the Guyot algorithm to generate IPD from these digitised points using `guyot.method()`. This function is taken from Certara's `survivalnma` package (https://github.com/certara/survivalnma). 
+
+The KM curve we have digitised is here:
+
+![IMpower150 ABCP KM Curve](man/figures/IMpower150_OS_TCIC123.png)
+
+For `guyot.method()`, as well as the raw digitised points, we also need to provide the times at which the numbers at risk are reported below the KM plot, and the numbers at risk at each of those times. The total number of events (`tot.events`) can also be given to improve the estimation, but it isn't necessary to specify this.
+
+```{r, results="hide", warning=FALSE, message=FALSE}
+ipd1 <- guyot.method(km1$time, km1$survival, 
+                     t=seq(0,52,4),
+                     r=c(143,126,109,94,85,72,62,54,47,28,13,5,1,0),
+                     tot.events=NA
+                     )
+```
+
+Note that a warning is given because the latest time given in `t` is greater than the latest time in the digitised data `km1`. Other informative warnings and errors are given if the data is in an unusual/incorrect format.
+
+`guyot.method()` returns a list containing data frames that provide the estimated KM curve values (`ipd1$curve`) and KM IPD values (`ipd1$patient`).
+
+This is then the information we need to run various different evidence synthesis analyses.
+
+
+## Pooling and subsetting KM data
+
+We might (or rather we **will**) encounter situations where KM plots report data in subgroups that aren't quite what we want to analyse. 
+
+For NSCLC, different categories of PDL1 are the issue. These are listed within IMpower150 as TCIC0 (corresponds to PDL1<1%), TCIC3 (corresponds to PDL1>50%) and TCIC123 (corresponds to PDL1>1%). Therefore, if we want to get data for PDL1<50%, we need to: 
+
+1. Generate a dataset of the overall data (all PDL1) by combining TCI123 and TCIC0
+2. Remove the PDL1>50% participants by removing data from TCIC3
+
+So to start with we need the digitised IPD for all three categories
+
+```{r, results="hide", warning=FALSE, message=FALSE}
+#### TCIC123 ####
+
+# We already have ipd1
+
+
+#### TCIC0 ####
+km2 <- read_csv(system.file("extdata", "IMpower150_ABCP_OS_TCIC0.csv", package="BristolTAG"), 
+                col_names=FALSE)
+km2 <- clean.digitised(km2)
+ipd2 <- guyot.method(km2$time, km2$survival, 
+                     t=seq(0,44,4),
+                     r=c(120,105,91,75,60,48,39,30,25,14,6,2),
+                     tot.events=NA
+                     )
+
+#### TCIC3 ####
+km3 <- read_csv(system.file("extdata", "IMpower150_ABCP_OS_TCIC3.csv", package="BristolTAG"), 
+                col_names=FALSE)
+km3 <- clean.digitised(km3)
+ipd3 <- guyot.method(km3$time, km3$survival, 
+                     t=seq(0,52,4),
+                     r=c(50,44,36,34,31,29,27,25,22,13,4,2,1,0),
+                     tot.events=NA
+                     )
+```
+
+We then have to combine `ipd1` (TCI123) and `ipd2` (TCIC0):
+
+```{r, results="hide", warning=FALSE, message=FALSE}
+ipd12 <- combine.ipd.guyot(ipd1, ipd2)
+```
+
+And to remove `ipd3` (TCIC3) from `ipd12` (TCIC0123):
+
+```{r, results="hide", warning=FALSE, message=FALSE}
+ipd.subgroup <- sub.ipd.guyot(ipd12, ipd3)
+```
+
+We can plot the KM curve for this to check it makes sense:
+
+```{r}
+survival_fit <- survfit(Surv(ipd.subgroup$patient$time, ipd.subgroup$patient$event) ~ 1)
+plot(survival_fit)
+```

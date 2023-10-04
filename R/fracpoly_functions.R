@@ -1,0 +1,906 @@
+
+#####################################################################
+###### Functions for JAGS modelling of fractional polynomials #######
+#####################################################################
+
+
+#' Prepare JAGS data for fractional polynomial models
+#'
+#' @param data A dataframe of aggregate survival data (generated from digitized KM plots).
+#'   Must have the following columns:
+#'   * `spgrp` index for the time interval
+#'   * `trialid` index for trial
+#'   * `treatment` treatment names (as character), corresponding to values in `trtnames`
+#'   * `nevents` the number of events in a time interval
+#'   * `natrisk` the number at risk in a time interval
+#'   * `time` time at the end of the time interval (I think)
+#'   * `length` the length (duration) of the time interval
+#'
+#' @param trtnames A character vector of treatment names ordered how the treatment codes should be ordered
+#'   within the network
+#' @param polyorder Numeric value indicating the order of the fractional polynomial. Can be either `1` or `2`
+#'
+#' @export
+fp_data <- function(data, trtnames, polyorder=1) {
+
+  codes <- trtnames
+
+  codes <- c("BCP", "ABCP", "PPCT", "PCT")
+  data$txCode <- as.numeric(factor(data$treatment, labels = codes,
+                                   levels=codes))
+
+
+  # Order data (using tidyverse)
+  data <- arrange(data, trialid, txCode, spgrp)
+  #data <- data[order(data$trialid, data$txCode, data$spgrp),]
+
+  #-----------------------------------------------------------------------------
+  # Data formatting
+  #-----------------------------------------------------------------------------
+
+  # Need to number the treatment arms within each trial
+  data <- data %>%
+    group_by(trialid, spgrp) %>%
+    mutate(arm=seq(n()))
+
+  # Drop uneven spgrp within a trial (test if removing makes a difference by using 1st bit of code)
+  data <- data %>%
+    group_by(trialid, spgrp) %>%
+    mutate(drop=n()) %>%
+    subset(drop!=1)
+
+  # data <- data %>%
+  #   group_by(trialid, txCode, arm) %>%
+  #   mutate(drop=n()) %>%
+  #   subset(drop!=1)
+
+  # Maxarm
+  data <- data %>%
+    group_by(trialid, spgrp) %>%
+    mutate(maxarm=n()) %>%
+    ungroup()
+
+  # Check all arms coded
+  #all(data$arm==1 | data$arm==2 | data$arm==3)
+
+  # Length of time intervals
+  data$length <- data$time-data$start
+
+  # na
+  temp <- data %>% select(trialid, maxarm) %>% unique(.)
+  na <- temp$maxarm
+
+  # t
+  temp <- data %>% select(trialid, txCode) %>% unique(.)
+  t <- matrix(nrow=length(na), ncol=max(na))
+  for (i in seq_along(unique(temp$trialid))) {
+    sub <- temp[temp$trialid==unique(temp$trialid)[i],]
+    t[i, 1:nrow(sub)] <-
+      sub$txCode
+  }
+
+  # Fractional polynomial order
+  if (polyorder==1) {
+    d.mean <- c(0,0)
+    precarray <- array(c(0.0001, 0, 0, 0.0001), dim=c(2,2))
+  } else if (polyorder==2){
+    d.mean <- c(0,0,0)
+    precarray <- array(c(0.0001, 0, 0,
+                         0, 0.0001, 0,
+                         0, 0, 0.0001), dim=c(3,3))
+  }
+
+  ########### Create JAGS data #########
+
+  jagsdat <- list(s=data$trialid, r=data$nevents, z=data$natrisk, a=data$arm, time=data$time,
+                  dt=data$length, N=nrow(data), nt=n_distinct(data$treatment), ns=n_distinct(data$trialid),
+                  mean=d.mean, prec=precarray,
+                  t=t,  na=na)
+
+  return(jagsdat)
+}
+
+
+
+
+
+#' Plot posterior means of residual deviance contributions
+#'
+#' Plots posterior means of residual deviance contributions or dev-dev plots (if two models are specified)
+#'
+#' @param jagsmod1 Object of class `rjags` that includes monitored `dev` nodes
+#' @param jagsmod2 Object of class `rjags` that includes monitored `dev` nodes (default is `NULL` but if model
+#' is included then dev-dev plot is created)
+#' @param vline Can take either `"arm"` or `"study"` to indicate whether vertical dashed lines should indicate change in
+#' arm or study respectively. Can be set as `NULL` to not plot any (will be set to `NULL` for dev-dev plots)
+#'
+#' @details
+#' Note that for dev-dev plots to be created the model must have the same number of deviance contributions. I.e. the
+#' likelihood and data used must be the same. Cannot be used to compare different datasets or likelihoods.
+#'
+#' @export
+devplot <- function(jagsmod1, jagsmod2=NULL, vline="study") {
+
+  if (!"rjags" %in% class(jagsmod1)) {
+    stop("jagsmod1 is not an object of class rjags")
+  }
+  if (!"dev" %in% names(jagsmod1$BUGSoutput$mean)) {
+    stop("deviance contributions not monitored in jagsmod1")
+  }
+
+  jagsdat <- jagsmod1$model$data()
+
+  dev.df <- data.frame(dev1=jagsmod1$BUGSoutput$mean$dev,
+                       study=jagsdat$s,
+                       arm=jagsdat$a,
+                       N=1:jagsdat$N)
+
+  # Powers info
+  P1 <- jagsmod1$model$data()$P1
+  P2 <- jagsmod1$model$data()$P2
+
+  info1 <- paste0("(P1 = ", P1,
+                  ifelse(!is.null(P2), paste0(", P2 = ", P2, ")"), ")"))
+
+  capt <- paste0("Total residual deviance for jagsmod1: ", round(jagsmod1$BUGSoutput$mean$totresdev,1))
+
+  # Check where there are observations that change arm/study
+  cuts <- vector()
+  start <- 1 # Assumes trialid and arm are numeric
+  for (i in seq_along(dev.df$N)) {
+    if (dev.df[[vline]][i]!=dev.df[[vline]][start]) {
+      cuts <- append(cuts, dev.df$N[i])
+      start <- dev.df$N[i]
+    }
+  }
+
+
+  if (!is.null(jagsmod2)) {
+    if (!"rjags" %in% class(jagsmod2)) {
+      stop("jagsmod2 is not an object of class rjags")
+    }
+    if (!"dev" %in% names(jagsmod2$BUGSoutput$mean)) {
+      stop("deviance contributions not monitored in jagsmod2")
+    }
+
+    dev.df$dev2 <- jagsmod2$BUGSoutput$mean$dev
+
+    # Powers info
+    P1 <- jagsmod2$model$data()$P1
+    P2 <- jagsmod2$model$data()$P2
+
+    info2 <- paste0("(P1 = ", P1,
+                   ifelse(!is.null(P2), paste0(", P2 = ", P2, ")"), ")"))
+
+    capt2 <- paste0("Total residual deviance for jagsmod2: ", round(jagsmod2$BUGSoutput$mean$totresdev,1))
+    capt <- paste(capt, capt2, sep="\n")
+
+    g <- ggplot2::ggplot(data=dev.df, aes(x=dev1, y=dev2)) +
+      geom_point() +
+      xlab(paste("Residual deviance for jagsmod1", info1)) +
+      ylab(paste("Residual deviance for jagsmod2", info2))
+
+  } else {
+
+    g <- ggplot2::ggplot(data=dev.df, aes(x=N, y=dev1)) +
+      geom_point() +
+      geom_vline(xintercept=cuts, linetype="dashed") +
+      ylab(paste("Residual deviance for jagsmod1", info1)) +
+      xlab("Observation number")
+
+  }
+
+  g <- g + labs(caption=capt) +
+    theme_bw()
+
+  return(g)
+}
+
+
+
+
+
+
+
+#' Takes IPD data and returns aggregated time interval data
+#'
+#' Takes a generated dataset and formats the data ready to apply the anova parameterisation
+#'
+#' @param timepoints ?
+#' @param timepoints2 ?
+#' @param ref.study ?
+#' @param df A data frame of IPD KM data (what variables are required?)
+#'
+#' @export
+anova_data <- function(timepoints, timepoints2, ref.study=1, df){
+
+  # Split the data at timepoints
+  df2 <- survSplit(Surv(time, event) ~., data=df,
+                   cut=timepoints, episode ="timegroup")
+
+  # Calculate offset
+  df2$y <- df2$time - df2$tstart
+
+  # Add a variable that equals one for all patients - this is so the number at risk
+  # can be calculated when we collapse the data
+  df2$n <- 1
+
+  # Collapse data
+  df3 <- summaryBy(y + event + n ~ timegroup + treatment + studyCode, FUN=c(sum, max), data=df2)
+  df3 <- subset(df3, select=-c(event.max, n.max))
+  names(df3) <- c("spgrp", "treatment", "trialid", "y", "nevents", "natrisk", "y.max")
+
+
+  # Add in a start time variable
+  df3$start <- NA
+  for(i in unique(df3$spgrp)){
+    df3$start[df3$spgrp==i] <- timepoints2[i]
+  }
+
+  # Add in a time variable (i.e. how long since time 0 to max value of y for each row)
+  df3$time <- df3$start + df3$y.max
+
+  # Return the formatted dataset
+  return(df3)
+
+}
+
+
+
+
+
+
+
+#' Create initial values for model
+#'
+#' Assumes 3 chains
+#'
+#' @param ns An integer for the number of studies in the analysis
+#' @param polyorder Takes 1 for 1st order and 2 for 2nd order fractional polynomials
+#' @param seed Can be set to `NULL` if no seed is desired
+#'
+#' @export
+fp_geninits <- function(ns=4, polyorder=1, seed=890421) {
+
+  if (!is.null(seed)) {
+    set.seed <- seed
+  }
+
+  init1 <- list()
+  init1$d <- matrix(nrow=ns, ncol=polyorder+1, 0.1)
+  init1$mu <- matrix(nrow=ns, ncol=polyorder+1,
+                     round(runif(ns*(polyorder+1), 0.1, 0.6), 1))
+  init1$d[1,] <- NA
+
+  init2 <- list()
+  init2$d <- matrix(nrow=ns, ncol=polyorder+1, 0.2)
+  init2$mu <- matrix(nrow=ns, ncol=polyorder+1,
+                     round(runif(ns*(polyorder+1), -0.2, 0.7), 1))
+  init2$d[1,] <- NA
+
+  init3 <- list()
+  init3$d <- matrix(nrow=ns, ncol=polyorder+1, round(runif(ns*(polyorder+1), -0.1,0.1),1))
+  init3$mu <- matrix(nrow=ns, ncol=polyorder+1,
+                     round(runif(ns*(polyorder+1), -0.1, 0.7), 1))
+  init3$d[1,] <- NA
+
+  return(list(init1,
+              init2,
+              init3))
+}
+
+
+
+
+
+#' Calculate time-varying hazard ratios (HR)
+#'
+#' @param jagsmod an object of class `"rjags"` that contains the results of a
+#' fractional polynomial model.
+#' @param times a vector of times at which to estimate time-varying HRs
+#' @param eform whether results should be on log (`FALSE`) or exponentiated onto
+#' natural (`TRUE`) scale.
+#'
+#' @export
+hrcalc <- function(jagsmod,
+                   times=seq(1,60, length.out=100),
+                   eform=TRUE) {
+
+  if (!"rjags" %in% class(jagsmod)) {
+    stop("jagsmod must be an object of class rjags")
+  }
+  if (!all(c("d") %in% jagsmod$parameters.to.save)) {
+    stop("d must be monitored in jagsmod")
+  }
+
+  if (eform==TRUE) {
+    message("Outputs will be on HR scale")
+  } else {
+    message("Outputs will be on log-HR scale")
+  }
+
+  jagsdat <- jagsmod$model$data()
+
+  time1 <- vector()
+  for (i in seq_along(times)) {
+
+    # For 2nd order FP
+    if ("P2" %in% names(jagsdat)) {
+      time1 <- append(time1,  ifelse(jagsdat$P1==0, log(i), i^jagsdat$P1) +
+                        ifelse(jagsdat$P2==0, log(i), i^jagsdat$P2))
+    } else {
+      # For 1st order FP
+      time1 <- append(time1,  ifelse(jagsdat$P1==0, log(i), i^jagsdat$P1))
+    }
+  }
+
+
+  d <- jagsmod$BUGSoutput$sims.list$d
+  mu <- jagsmod$BUGSoutput$sims.list$mu
+  loghr <- array(dim=c(jagsdat$nt, jagsdat$nt, length(times), jagsmod$BUGSoutput$n.sims))
+  out.df <- data.frame(trt1=NA, trt2=NA, time=NA, mean=NA, sd=NA, '2.5%'=NA, '50%'=NA, '95.%'=NA)
+
+  for (m in seq_along(times)) {
+    for (i in 1:(jagsdat$nt-1)) {
+      for (k in (i+1):jagsdat$nt) {
+        loghr[i,k,m,] <- (d[,k,1]-d[,i,1]) + ((d[,k,2]-d[,i,2]) * time1[m])
+        loghr[k,i,m,] <- (d[,i,1]-d[,k,1]) + ((d[,i,2]-d[,k,2]) * time1[m])
+
+        if (eform==TRUE) {
+          loghr[i,k,m,] <- exp(loghr[i,k,m,])
+          loghr[k,i,m,] <- exp(loghr[k,i,m,])
+        }
+      }
+    }
+
+    for (i in 1:(jagsdat$nt)) {
+      for (k in 1:(jagsdat$nt)) {
+        if (k!=i) {
+          # mean <- mean(loghr[i,k,m,])
+          # sd <- sd(loghr[i,k,m,])
+          # quants <- quantile(loghr[i,k,m,], probs=c(0.025,0.5,0.975))
+
+          row <- c(k, i, times[m], mcmc_sum(loghr[i,k,m,]))
+
+          out.df <- rbind(out.df, row)
+        }
+      }
+    }
+  }
+  out.df <- out.df[-1,]
+  names(out.df) <- c("trt1", "trt2", "time", "mean", "sd", "2.5%", "50%", "97.5%")
+
+  out <- list(summary=out.df, array=loghr, eform=eform,
+              P1=jagsmod$model$data()$P1, P2=jagsmod$model$data()$P2)
+  class(out) <- "hazard.ratios"
+
+  return(out)
+}
+
+
+
+#' @describeIn hrcalc Plot time-varying HRs
+#'
+#' @param hr An object of class `"hazard.ratios"` containing the output of `hrcalc()`
+#' @param reftrt An index for the reference treatment against which HRs should be plotted
+#'
+#' @export
+plot.hazard.ratios <- function(hr, reftrt=1) {
+  if (!"hazard.ratios" %in% class(hr)) {
+    stop("hr must be an object of class 'hazard.ratios' generated by hrcalc()")
+  }
+
+  out.df <- hr$summary
+
+  out.df <- subset(out.df, trt2==reftrt)
+
+  out.df$trt1 <- factor(out.df$trt1)
+
+  cols <- RColorBrewer::brewer.pal(n_distinct(out.df$trt1), "Set1")
+
+  g <- ggplot(out.df, aes(x=time, ymin=`97.5%`, ymax=`2.5%`, y=`50%`,
+                          color=trt1, fill=trt1, linetype=trt1)) +
+    geom_line() +
+    geom_ribbon(alpha=0.3) +
+    xlab("Time") + ylab(ifelse(hr$eform, "HR", "log-HR")) +
+    theme_bw() +
+    ggtitle(paste0("Time-varying relative effects vs treatment ", unique(out.df$trt2))) +
+    scale_fill_manual(name = "Treatment", values=cols) +
+    scale_color_manual(name = "Treatment", values=cols) +
+    scale_linetype_discrete(name = "Treatment") +
+    labs(caption=paste0("Fractional polynomial; P1 = ", hr$P1, ifelse(!is.null(hr$P2), paste0(", P2 = ", hr$P2), "")))
+
+  return(g)
+}
+
+
+
+
+#' Predict survival quantities
+#'
+#' Outputs survival probabilities (`"S"`), mortality probabilities (`"mort"`),
+#' cumulative hazards (`"cumhaz"`) and hazards (`"haz"`).
+#'
+#' @inheritParams hrcalc
+#' @param refstudy index for the study to use as reference when making predictions.
+#' @param n.mcmc integer to indicate the number of MCMC samples to draw (without replacement). Note that sampling
+#' is random (though is the same across parameters to preserve within-sample correlation). Speeds up computation,
+#' though will result in higher MCMC error.
+#'
+#' @export
+survcalc <- function(jagsmod, times=seq(1,60, length.out=100), refstudy=1,
+                     n.mcmc=2000) {
+
+  if (!"rjags" %in% class(jagsmod)) {
+    stop("jagsmod must be an object of class rjags")
+  }
+  if (!all(c("d", "mu") %in% jagsmod$parameters.to.save)) {
+    stop("d and mu must be monitored in jagsmod")
+  }
+  if (dim(jagsmod$BUGSoutput$sims.list$d)[3]==2) {
+    polyorder <- 1
+  } else if (dim(jagsmod$BUGSoutput$sims.list$d)[3]==3) {
+    polyorder <- 2
+  }
+
+  if (!is.null(n.mcmc)) {
+    mcmc.index <- sample(1:jagsmod$n.iter, size=n.mcmc)
+    matsize <- n.mcmc
+  } else {
+    matsize <- jagsmod$BUGSoutput$n.sims
+  }
+
+  jagsdat <- jagsmod$model$data()
+  #jagsdat$nt <- jagsdat$Ntrt
+  sims.list <- jagsmod$BUGSoutput$sims.list
+
+  reftrt <- jagsdat$t[refstudy,1]
+
+  if (jagsdat$P1==0) {
+    fptimes1 <- log(times)
+  } else {
+    fptimes1 <- times^jagsdat$P1
+  }
+
+  if (polyorder==2) {
+    if (jagsdat$P2!=jagsdat$P1) {
+      if (jagsdat$P2==0) {
+        fptimes2 <- log(times)
+      } else {
+        fptimes2 <- times^jagsdat$P2
+      }
+    } else if (jagsdat$P2==jagsdat$P1) {
+      if (jagsdat$P2==0) {
+        fptimes2 <- log(times) * log(times)
+      } else {
+        fptimes2 <- (times^jagsdat$P2) * log(times)
+      }
+    }
+  }
+
+
+
+  alpha <- array(dim=c(matsize, jagsdat$nt, polyorder+1))
+
+  haz <- array(dim=c(matsize, jagsdat$nt, length(times)))
+  cumhaz <- haz
+  mort <- haz
+  S <- haz
+
+  haz.df <- data.frame(trt=NA, time=NA, mean=NA, sd=NA, '2.5%'=NA, '50%'=NA, '95.%'=NA)
+  cumhaz.df <- haz.df
+  mort.df <- haz.df
+  S.df <- haz.df
+
+  # Speeds up computation
+  if (!is.null(n.mcmc)) {
+    for (k in 1:jagsdat$nt) {
+
+      for (p in 1:dim(alpha)[3]) {
+        alpha[,k,p] <-
+          sims.list$mu[mcmc.index,refstudy,p] + sims.list$d[mcmc.index,k,p] - sims.list$d[mcmc.index,reftrt,p]
+      }
+    }
+  } else {
+    for (k in 1:jagsdat$nt) {
+      for (p in 1:dim(alpha)[3]) {
+        alpha[,k,p] <-
+          sims.list$mu[,refstudy,p] + sims.list$d[,k,p] - sims.list$d[,reftrt,p]
+      }
+    }
+  }
+
+  # This is slow - there may be ways to improve the efficiency
+  pb <- txtProgressBar(min = 0, max = length(times), initial = 0, style=3)
+  for (m in seq_along(times)) {
+    setTxtProgressBar(pb,m)
+    for (k in 1:jagsdat$nt) {
+      # MCMC calcs
+      loghaz <- alpha[,k,1] + alpha[,k,2] * fptimes1[m]
+      if (polyorder==2) {
+        loghaz <- loghaz + alpha[,k,3] * fptimes2[m]
+      }
+      haz[,k,m] <- exp(loghaz)
+      cumhaz[,k,m] <- apply(haz[,k,], MARGIN=c(1), FUN=function(x,row) {sum(x[1:row], na.rm=TRUE)}, row=m)
+
+      # Posterior summaries for loghaz and cumhaz
+      haz.df <- rbind(haz.df, c(k, times[m], mcmc_sum(haz[,k,m])))
+      cumhaz.df <- rbind(cumhaz.df, c(k, times[m], mcmc_sum(cumhaz[,k,m])))
+    }
+
+    # MCMC calcs
+    mort[,,m] <- 1-exp(-cumhaz[,,m])
+    S[,,m] <- 1-mort[,,m]
+
+    for (k in 1:jagsdat$nt) {
+      mort.df <- rbind(mort.df, c(k, times[m], mcmc_sum(mort[,k,m])))
+      S.df <- rbind(S.df, c(k, times[m], mcmc_sum(S[,k,m])))
+    }
+  }
+  close(pb)
+
+  haz.df <- haz.df[-1,]
+  cumhaz.df <- cumhaz.df[-1,]
+  mort.df <- mort.df[-1,]
+  S.df <- S.df[-1,]
+  names(haz.df) <- names(cumhaz.df) <- names(mort.df) <- names(S.df) <-
+    c("trt", "time", "mean", "sd", "2.5%", "50%", "97.5%")
+
+  surv.arrays <- list(haz=haz, cumhaz=cumhaz, mort=mort, S=S)
+  surv.sum <- list(haz=haz.df, cumhaz=cumhaz.df, mort=mort.df, S=S.df)
+
+  out <- list(summary=surv.sum, mcmc=surv.arrays, treats=1:jagsdat$nt, refstudy=refstudy,
+              P1=jagsdat$P1, P2=jagsdat$P2)
+  class(out) <- "surv.predicts"
+
+  return(out)
+}
+
+
+
+#' @describeIn survcalc Plot survival predictions
+#'
+#' @param surv An object of class `"surv.predicts"` generated by `survcalc()`
+#' @param quantity specifies the quantity to be plotted. Can be either `"S"` for survival (note that S is upper case),
+#' `"mort"` for mortality, `"haz"` for hazards, `"cumhaz"` for cumulative hazards.
+#' @param treats treatments to plot (as integers). Default plots them all
+#' @param plotinterval indicates whether to plot 95 percent CrI
+#' @param kmdat is a list containing data frames of IPD Kaplan-Meier data
+#'   to be added to a survival plot. Each data frame should be of a single study arm and should have 1 row
+#'   per patient and include the variables `time` (time of event) and `event` (1 for event, 0 for censoring).
+#'   List elements should be named by treatment (index) to which they correspond (e.g. list("3"=ipd1, "4"=ipd2)).
+#'   Can only be used if `quantity="S"`.
+#'
+#' @export
+plot.surv.predicts <- function(surv, quantity="S",
+                               treats=surv$treats,
+                               plotinterval=TRUE,
+                               kmdat=list()
+                               ) {
+  if (!"surv.predicts" %in% class(surv)) {
+    stop("surv must be an object of class 'surv.predicts' generated by survcalc()")
+  }
+  if (length(kmdat)>0 & quantity!="S") {
+    stop("Plotting IPD Kaplan-Meier data: kmdat can only be specified if quantity='s'")
+  }
+
+  out.df <- surv$summary[[quantity]]
+
+  # Define colours
+  cols <- RColorBrewer::brewer.pal(n_distinct(out.df$trt), "Set1")[treats]
+
+  # Subset by treatments
+  out.df <- subset(out.df, trt %in% treats)
+
+  out.df$trt <- factor(out.df$trt)
+
+  capt <- paste0("Fractional polynomial; P1 = ", surv$P1, ifelse(!is.null(surv$P2), paste0(", P2 = ", surv$P2), ""))
+  capt <- paste(capt, paste("Reference study:", surv$refstudy), sep="\n")
+
+  g <- ggplot(out.df, aes(x=time, ymin=`97.5%`, ymax=`2.5%`, y=`50%`,
+                          color=trt, fill=trt, linetype=trt)) +
+    geom_line() +
+    xlab("Time") + ylab(quantity) +
+    theme_bw() +
+    scale_fill_manual(name = "Treatment", values=cols) +
+    scale_color_manual(name = "Treatment", values=cols) +
+    scale_linetype_discrete(name = "Treatment") +
+    labs(caption=capt)
+
+  if (plotinterval) {
+    g <- g + geom_ribbon(alpha=0.3)
+  }
+
+  if (length(kmdat)>0) {
+    km.df <- overlay.KM(kmdat)
+    km.df$trt <- factor(km.df$trt, levels=levels(out.df$trt))
+
+    if (!all(unique(km.df$trt) %in% unique(out.df$trt))) {
+      warning("kmdat element names include those not present in treats")
+    }
+
+    g <- g + geom_step(data=km.df, aes(x=time, y=`50%`), color="black")
+  }
+
+  return(g)
+}
+
+
+
+
+
+
+#' Posterior summaries for MCMC
+#'
+#' @param mcmc A numeric vector of MCMC samples (can be a subset of an array/matrix)
+#'
+#' Returns a vector
+#'
+mcmc_sum <- function(mcmc) {
+  mean <- mean(mcmc)
+  sd <- sd(mcmc)
+  quants <- quantile(mcmc, probs=c(0.025,0.5,0.975))
+
+  return(c(mean, sd, quants))
+}
+
+
+
+
+overlay.KM <- function(kmdat) {
+
+  if (is.null(names(kmdat))) {
+    stop("kmdat must be named by the treatment (index) to which they correspond (e.g. list('3'=ipd1, '4'=ipd2))")
+  }
+
+  KMest <- matrix(nrow=0, ncol=3)
+  for (i in 1:length(kmdat)) {
+    ipd <- kmdat[[i]]
+    ipd$arm <- 1
+    temp <- survival::survfit(survival::Surv(time, event) ~ arm, data=ipd,type="kaplan-meier",)
+    KMest <- rbind(KMest, cbind(temp$time, temp$surv, as.numeric(names(kmdat)[i])))
+  }
+
+  df <- as.data.frame(KMest)
+
+  names(df) <- c("time", "50%", "trt")
+  df[["2.5%"]] <- 0
+  df[["97.5%"]] <- 0
+
+  return(df)
+}
+
+
+
+
+#' Runs multiple fractional polynomial models
+#'
+#' Runs multiple fractional polynomial models with various power combinations
+#' and can save resulting models. Allows user to set up multiple models to run
+#' back to back (so you can go away and have lunch/sleep/whisky).
+#'
+#' @param jagsdat A list of data to be read by the model (ideally generated by `fp_data()`).
+#'   Must have been generated for the same fractional polynomial model order (`polyorder=1` or `polyorder=2`)
+#'   as the set of models to run.
+#' @param powers A sequence of fractional polynomial powers to run models for. Note that for 2nd order models
+#'   all combinations of powers will be run (i.e. lots of models - length(powers) permute 2).
+#' @param savefile A `.rds` file to which the generated object (a list of models) should be saved. Default (`NULL`) does not
+#' save a file.
+#' @param overwrite Whether the file specified in `savefile` should be overwritten (`TRUE`), or simply appended (`FALSE`)
+#' @param ... Arguments to be sent to JAGS (e.g. `n.iter`)
+#' @inheritParams survcalc
+#'
+#' @return A list of fractional polynomial models. Each element is a model (or an error message if the model failed to
+#' run), named as follows `"FP_<1st power>_<2nd power>`.
+#'
+#' @export
+sequence_fpoly <- function(jagsdat, powers=c(-3,-2,-1,-0.5,0,0.5,1,2,3), polyorder=1,
+                           savefile=NULL, overwrite=TRUE,
+                           inits=fp_geninits(ns=jagsdat$ns, polyorder=polyorder, seed=890421),
+                           ...) {
+
+  args <- list(...)
+
+  # Ensure jagsdat has correct d.mean and prec for polyorder
+  if (polyorder==1) {
+    jagsdat$mean <- c(0,0)
+    jagsdat$prec <- array(c(0.0001, 0, 0, 0.0001), dim=c(2,2))
+  } else if (polyorder==2){
+    jagsdat$mean <- c(0,0,0)
+    jagsdat$prec <- array(c(0.0001, 0, 0,
+                         0, 0.0001, 0,
+                         0, 0, 0.0001), dim=c(3,3))
+  }
+
+  # Should previous model file be overwritten or appended?
+  if (overwrite==FALSE) {
+    if (!is.null(savefile)) {
+      modseq <- readRDS(savefile)
+    } else {
+      modseq <- list()
+    }
+  } else if (overwrite==TRUE) {
+    modseq <- list()
+  }
+
+  # 1st order FP
+  if (polyorder==1) {
+    for (p1 in seq_along(powers)) {
+
+      print(paste0("Running fractional polynomial P1=", powers[p1], ", model ", p1, "/", length(powers)))
+
+      # Set FP power
+      jagsdat$P1 <- powers[p1]
+
+
+      out <- tryCatch({
+        # Run JAGS model
+        jagsmod <- do.call(R2jags::jags, c(args, list(data = jagsdat,
+                                                      inits=inits,
+                                                      parameters.to.save=c("d", "mu", "dev", "totresdev"),
+                                                      model.file=system.file("JAGSmodels", "FE_1st_order_model.jags", package="BristolTAG")
+                                                      #model.file="inst/JAGSmodels/FE_1st_order_model.jags"
+        )))
+      },
+      error=function(cond) {
+        message(cond)
+        return(list(error=cond))
+      })
+
+      modnam <- paste("FP", powers[p1], sep="_")
+
+      if (modnam %in% names(modseq) & overwrite==FALSE) {
+        stop("Model run has the same FP powers as an existing model in the list, but overwrite==FALSE")
+      }
+      modseq[[modnam]] <- out
+
+      if (!is.null(savefile)) {
+        saveRDS(modseq, file=savefile)
+      }
+    }
+
+    # 2nd order FP
+  } else if (polyorder==2) {
+    count <- 1
+    for (p1 in seq_along(powers)) {
+      for (p2 in seq_along(powers)) {
+
+        # Calculate permutations of powers
+        perm <- factorial(length(powers)) / factorial(length(powers)-2)
+
+        print(paste0("Running fractional polynomial P1=", powers[p1], ", P2=", powers[p2],
+                     ", model ", count, "/", perm))
+        count <- count + 1
+
+        # Set FP power
+        jagsdat$P1 <- powers[p1]
+        jagsdat$P2 <- powers[p2]
+
+
+        out <- tryCatch({
+          # Run JAGS model
+          jagsmod <- do.call(R2jags::jags, c(args, list(data = jagsdat,
+                                                        inits=inits,
+                                                        parameters.to.save=c("d", "mu", "dev", "totresdev"),
+                                                        model.file=system.file("JAGSmodels", "FE_2nd_order_model.jags", package="BristolTAG")
+          )))
+        },
+        error=function(cond) {
+          message(cond)
+          return(list(error=cond))
+        })
+
+        modnam <- paste("FP", powers[p1], powers[p2], sep="_")
+
+        if (modnam %in% names(modseq) & overwrite==FALSE) {
+          stop("Model run has the same FP powers as an existing model in the list, but overwrite==FALSE")
+        }
+        modseq[[modnam]] <- out
+
+        if (!is.null(savefile)) {
+          saveRDS(modseq, file=savefile)
+        }
+      }
+    }
+  }
+
+  class(modseq) <- "sequence.fpoly"
+  return(modseq)
+}
+
+
+
+
+
+#' Get a summary of model fit statistics for a sequence of models
+#'
+#' @param object A list of JAGS models of class `"sequence.fpoly` generated by `sequence_fpoly()`
+#' @param rhat A cutoff for which to make a basic check for convergence. If there are any `mu` or `d`
+#' parameters that have an Rhat greater than this cutoff (default is 1.05) then it will be announced. Can set to
+#' `NULL` which means a convergence check won't be made (and therefore you should do it yourself properly :-P).
+#' @param ... Arguments for `tibble()`
+#'
+#' @return Returns a tibble of model fit stats. If values are `NA` for a model then it means the model did not run and
+#' returned an error.
+#'
+#' @export
+#'
+summary.sequence.fpoly <- function(object, rhat=1.05, ...) {
+
+  if (!class(object) %in% "sequence.fpoly") {
+    stop("object must be an object of class 'sequence.fpoly' generated by sequence_fpoly()")
+  }
+
+  out.df <- tibble("model"=NA, "totresdev"=NA, "pv"=NA, "DIC"=NA, converged=NA, ...)
+
+  for (mod in seq_along(object)) {
+
+    # If a model threw an error
+    if ("error" %in% names(object[[mod]])) {
+      out.df <- out.df %>% add_row(model=names(object)[mod],
+                                   totresdev=NA,
+                                   pv=NA,
+                                   DIC=NA,
+                                   converged=NA
+      )
+    } else {
+
+      # Convergence check
+      ind <- grep("d\\[", rownames(object[[mod]]$BUGSoutput$summary))
+      ind <- append(ind, grep("mu\\[", rownames(object[[mod]]$BUGSoutput$summary)))
+      con <- any(object[[mod]]$BUGSoutput$summary[ind, "Rhat"]>=rhat)
+
+      out.df <- out.df %>% add_row(model=names(object)[mod],
+                                   totresdev=round(mean(object[[mod]]$BUGSoutput$mean$totresdev),2),
+                                   pv=round(object[[mod]]$BUGSoutput$pD,2),
+                                   DIC=round(object[[mod]]$BUGSoutput$DIC,2),
+                                   converged=con
+      )
+
+    }
+  }
+  out.df <- out.df[-1,]
+
+  return(out.df)
+}
+
+
+
+
+
+#' Calculate Area Under the Curve
+#'
+#' @param surv An object of class `"surv.predicts"` generated by `survcalc()`.
+#' @param tint A numeric vector of length 2 that indicates the interval over which to
+#'   calculate AUC.
+#' @inheritParams plot.surv.predicts
+#'
+#' @return Returns a data frame of AUC values for each treatment
+#'
+#' @details
+#' Function uses the `pracma` package for integration, so this must be installed.
+#'
+#' @export
+auc <- function(surv, tint=c(1,max(surv$summary[[1]]$time)),
+                              quantity="S"
+                              ) {
+
+  if (!"surv.predicts" %in% class(surv)) {
+    stop("surv must be an object of class 'surv.predicts' generated by survcalc()")
+  }
+  if (length(tint)!=2) {
+    stop("tint must have length 2")
+  }
+
+  sum.df <- surv$summary[[quantity]]
+
+  sum.df <- subset(sum.df, time>=tint[1] & time<=tint[2])
+
+  # Uses the pracma package
+  sum.df <- sum.df %>% group_by(trt) %>%
+    mutate(auc=pracma::trapz(time, `50%`)) %>%
+    select(trt, auc) %>%
+    unique(.)
+
+  return(sum.df)
+}

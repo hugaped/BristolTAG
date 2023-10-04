@@ -1,0 +1,28 @@
+Package: BristolTAG
+Type: Package
+Title: Support package for Bristol Technology Assessment Group tools
+Version: 0.1.9000
+Author: Hugo Pedder
+Maintainer: Hugo Pedder <hugo.pedder@bristol.ac.uk>
+Description: Package contains functions for running analyses in R and generating
+    plots used by the University of Bristol's Technology Assessment Group (Bristol TAG).
+    Continually in development, mainly for use on pathways projects (e.g. NSCLC) and
+    with fractional polynomial survival models.
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Suggests: 
+    knitr,
+    rmarkdown,
+    ggplot,
+    R2jags,
+    doBy,
+    tidyverse,
+    survival,
+    RColorBrewer,
+    pracma
+SystemRequirements: JAGS (>= 4.3.0) (https://mcmc-jags.sourceforge.net/)
+VignetteBuilder: knitr
+RoxygenNote: 7.2.3
+Depends: 
+    R (>= 2.10)
