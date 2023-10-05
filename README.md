@@ -30,7 +30,7 @@ You can install the development version of BristolTAG from
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("hugaped/BristolTAG_R_Package")
+devtools::install_github("hugaped/BristolTAG")
 ```
 
 ## Getting started
@@ -48,4 +48,4 @@ just write somewhere that you used it and include a reference like this:
 
 *BristolTAG R package; Hugo Pedder; Bristol Technology Assessment Group,
 University of Bristol; 2023. Available at:
-<https://github.com/hugaped/BristolTAG_R_Package>.*
+<https://github.com/hugaped/BristolTAG>.*

@@ -423,7 +423,7 @@ categories</p>
 <span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a></span>
 <span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a></span>
 <span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="do">#### TCIC0 ####</span></span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>km2 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="fu">system.file</span>(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;IMpower150_ABCP_OS_TCIC0.csv&quot;</span>, <span class="at">package=</span><span class="st">&quot;BristolTAG&quot;</span>), </span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>km2 <span class="ot">&lt;-</span> <span class="fu">read_table</span>(<span class="fu">system.file</span>(<span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;IMpower150_ABCP_OS_TCIC0.csv&quot;</span>, <span class="at">package=</span><span class="st">&quot;BristolTAG&quot;</span>), </span>
 <span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>                <span class="at">col_names=</span><span class="cn">FALSE</span>)</span>
 <span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>km2 <span class="ot">&lt;-</span> <span class="fu">clean.digitised</span>(km2)</span>
 <span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>ipd2 <span class="ot">&lt;-</span> <span class="fu">guyot.method</span>(km2<span class="sc">$</span>time, km2<span class="sc">$</span>survival, </span>

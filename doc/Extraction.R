@@ -34,7 +34,7 @@ ipd1 <- guyot.method(km1$time, km1$survival,
 
 
 #### TCIC0 ####
-km2 <- read_csv(system.file("extdata", "IMpower150_ABCP_OS_TCIC0.csv", package="BristolTAG"), 
+km2 <- read_table(system.file("extdata", "IMpower150_ABCP_OS_TCIC0.csv", package="BristolTAG"), 
                 col_names=FALSE)
 km2 <- clean.digitised(km2)
 ipd2 <- guyot.method(km2$time, km2$survival, 

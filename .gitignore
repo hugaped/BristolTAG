@@ -5,3 +5,5 @@ inst/doc
 .RData
 .Ruserdata
 docs
+/doc/
+/Meta/

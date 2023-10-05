@@ -31,14 +31,14 @@ for (i in 1:ns){                  # LOOP THROUGH STUDIES
      
 #priors
 for (i in 1:ns){        		      # LOOP THROUGH STUDIES
-  mu[i,1:3] ~ dmnorm(mean[1:3], prec[,])   # vague priors for all trial baselines 
+  mu[i,1:3] ~ dmnorm(mean[1:3], prec[1:3,1:3])   # vague priors for all trial baselines 
  }
 d[1,1]<-0        				         # alpha_0 treatment effect is zero for reference treatment
 d[1,2]<-0       					        # alpha_1 treatment effect is zero for reference treatment
 d[1,3]<-0       					        # alpha_2 treatment effect is zero for reference treatment
 
 for (k in 2:nt){			            # LOOP THROUGH TREATMENTS
-  d[k,1:3] ~ dmnorm(mean[1:3],prec[,])  # vague priors for treatment effects 
+  d[k,1:3] ~ dmnorm(mean[1:3],prec[1:3,1:3])  # vague priors for treatment effects 
  }
 
 }                                 # *** PROGRAM ENDS

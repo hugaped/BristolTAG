@@ -11,7 +11,9 @@ vignette: >
 knitr::opts_chunk$set(
   echo=TRUE,
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
 )
 ```
 
@@ -38,7 +40,14 @@ To run the analyses we need to have IPD KM data. This can be digitized using the
 
 ### Aggregating the data
 
-To run fractional polynomial models on the log-hazard function (the model developed by Jansen), the first step is to aggregate the IPD into specified time intervals. We’ll use intervals of 1 week for this example, but we can look at changing that if we need to.
+To run fractional polynomial models on the log-hazard function (the model developed by Jansen), the first step is to aggregate the IPD into specified time intervals using `anova_data()`. We’ll use intervals of 1 week for this example (specified in `timepoints`), but we can look at changing that if we need to.
+
+The IPD must be a data frame (one row per patient) with the following variables:
+
+* `time` A numeric vector of times at which event/censoring occured
+* `event` A binary vector indicating whether an event (`1`) or censoring (`0`) occured
+* `treatment` A factor variable for treatment name
+* `study` A factor variable for study name
 
 I’ll show this using PFS data for the NS1 node. Treatments are named within the code below, but they can be reordered later in the fractional polynomial data prep function.
 
@@ -47,18 +56,8 @@ I’ll show this using PFS data for the NS1 node. Treatments are named within th
 #df <- read.csv("Analysis/NS1/fracpoly/NS1 PFS IPD.csv")
 df <- NS1_PFS # (example here loads it from package to allow vignette to run)
 
-# Add treatment as a factor variable 
-df$treatment <- factor(df$txCode, level=1:4,
-          label=c("PPCT", "PCT", "ABCP", "BCP"))
-
-# Select time points for aggregating data - here we use 1 week intervals
-timepoints <- seq(1,72, by=1)
-
-# Time points including zero
-timepoints2 <- c(0, timepoints)
-
 # Apply function
-anova <- anova_data(timepoints=timepoints, timepoints2=timepoints2, ref.study=3,
+anova <- anova_data(timepoints=seq(0,72, by=1), 
                       df=df)
 ```
 
@@ -67,11 +66,10 @@ anova <- anova_data(timepoints=timepoints, timepoints2=timepoints2, ref.study=3,
 
 Next step is to get the data in the format we need for JAGS. This includes adding study and arm indices, and getting the data into a list.
 
-Within `fp_data()` the treatment names should be specified within the order you want them to be indexed in the network. If they don’t match then an error will be thrown. `polyorder` specifies the fractional polynomial order (either 1 or 2 for 1st or 2nd order respectively).
+Within `fp_data()` the treatment names should be specified **within the order you want them to be indexed in the network**. If they don’t match the treatment names specified within the IPD data then an error will be thrown.
 
 ```{r}
-jagsdat <- fp_data(data=anova, trtnames=c("BCP", "ABCP", "PPCT", "PCT"),
-                   polyorder=1)
+jagsdat <- fp_data(anova, trtnames=c("BCP", "ABCP", "PPCT", "PCT"))
 ```
 
 
@@ -79,22 +77,43 @@ jagsdat <- fp_data(data=anova, trtnames=c("BCP", "ABCP", "PPCT", "PCT"),
 
 ### Defining initial values
 
-This can be specified manually, or it can be automated using the `fp_geninits()` function. This uses fixed values for 2 chains and then uses random (but reasonable) values for the 3rd. The number of studies (`ns`) and the fractional polynomial order need to be specified, and the `seed` is optional for reproducibility.
+Initial values can be specified manually by defining a list (of length 3 for 3 chains, and each element is a named list of parameters), or they can be automated using the `fp_geninits()` function. This uses fixed values for 2 chains and then uses random (but reasonable) values for the 3rd. The number of studies (`ns`) and the fractional polynomial order need to be specified, and the `seed` is optional for reproducibility.
 
 ```{r}
 inits <- fp_geninits(ns=4, polyorder=1, seed=890421)
 ```
 
 
-### Calling JAGS
+### Running a sequence of models
 
-The first thing here is to note that we have not specified the fractional polynomial power value that we want to use yet! So the first bit of our code below adds that as data to the `jagsdat` object.
+Because there are multiple fractional polynomial models that can be run with different powers (particularly for 2nd order models of which there are n(P)2), there's a function for running them all sequentially and saving them to an object/file so that you can set it off running and go and do something fun like play badminton or go to the pub.
+
+`sequence_fpoly()` takes similar commands to the more verbose `jags()` function (see sections below), but doesn't require specification of the model code since it always uses the basic 1st or 2nd order fractional polynomial. As with `jags()` you can specify the number of iterations, initial values, etc. - for more details see `?R2jags::jags`. 
+
+You only have to pass it the correct dataset and to specify the fractional polynomial `powers` that you want to explore, as well as the `polyorder` of the fractional polynomial.
+
+```{r, results="hide"}
+modseq <- sequence_fpoly(jagsdat, powers=c(-1,-0.5), polyorder=1, inits=inits)
+```
+
+You can also specify a `savefile` (format must be `.rds`) where the resulting set of models should be saved (it saves after each model is run in case something crashes part way through), and set `overwrite==TRUE` if you want the previous `.rds` file to be overwritten (setting it to `FALSE` means that new models will be appended to the existing file). 
+
+The resulting object is a named list of models (so it could be dangerously massive if exploring several 2nd order FP powers). Note that this function does not check for convergence - that's something you have to do yourself (I might write another function for that but that would only rely on checking Rhat values anyway, which isn't perfect). 
+
+If there are errors in running a model (I think for some positive 1st order powers the default initial values might be wrong) then the list element will be the corresponding error message rather than the model results.
+
+
+### Calling JAGS (for writing slightly more flexible models)
+
+The more verbose way to run a single model (this will allow us to run edited scripts if we want to fit more complex models) is to use `R2jags::jags()`. If we're doing this then the first thing here is to note that we need to additionally specify the fractional polynomial power value that we want to use. So the first bit of our code below adds that as data to the `jagsdat` object.
 
 JAGS is then called to run the actual model. There are various arguments within this which you can check in the help file (`?jags`), but most of them should be pretty self explanatory. Another function (`jags.parallel()`) allows JAGS to be run in parallel, which might be useful for really slow models. I’ve also set a seed to get reproducible results (though these will be different if different initial values are used).
 
-The main thing that we will want to change is the choice of model, specified within the `model.file` argument. My plan is that we save all models in a folder (`"Analysis/JAGSmodels"`) as separate `.jags` files, and we then reference the location to them with the `model.file` argument depending on which model we want to run. However, standard ones will be saved within the `BristolTAG` package, and the code below will read one of these. The current code is for a 1st order fractional polynomial, but we can write other code for 2nd order, other distributions, random effects models, class models, etc. as needed.
+The main thing that we might want to change is the choice of model, specified within the `model.file` argument. My plan is that we save all models in a folder (`"Analysis/JAGSmodels"`) as separate `.jags` files, and we then reference the location to them with the `model.file` argument depending on which model we want to run. However, standard ones will be saved within the `BristolTAG` package, and the code below (as well as the `sequence_fpoly()` function) will read one of these. The current code is for a 1st order fractional polynomial, but we can write other code for 2nd order, other distributions, random effects models, class models, etc. as needed.
 
 I’ve specified that we should monitor the `d` (needed for time-varying HRs and predictions), the `mu` (needed for predictions), and the `dev` and `totresdev` (needed to look at model fit). DIC is also automatically monitored within the model.
+
+In order to allow the other functions in the package to run on the resulting JAGS object, we also have to set some attributes (treatment and study names).
 
 ```{r, results="hide"}
 # Set fractional polynomial power
@@ -105,8 +124,13 @@ jagsmod <- jags(data=jagsdat, inits=inits,
                 parameters.to.save=c("d", "mu", "dev", "totresdev"),
                 model.file=system.file("JAGSmodels", "FE_1st_order_model.jags", package="BristolTAG"),
                 jags.seed=890421,
-                n.iter=30000, n.burnin=2000, n.thin=1
+                n.iter=15000, n.burnin=2000, n.thin=1
 )
+
+# Set attributes to match those of jagsdat
+attr(jagsmod, "trtnames") <- attr(jagsdat, "trtnames")
+attr(jagsmod, "studynames") <- attr(jagsdat, "studynames")
+attr(jagsmod, "ipd") <- attr(jagsdat, "ipd")
 ```
 
 It’s a good idea to save the model afterwards as an RDS file that can be loaded into R. If you use the following command it will save the file with a name that indicates the fractional polynomial power value used.
@@ -117,37 +141,29 @@ saveRDS(jagsmod, file=paste0("Analysis/NS1/JAGS_Results/pfs_fpoly1_", jagsdat$P1
 ```
 
 
-### Running a sequence of models
+## Inspecting results
 
-Because there are multiple fractional polynomial models that can be run with different powers (particularly for 2nd order models of which there are n(P)2), there's a function for running them all sequentially and saving them to an object/file so that you can set it off running and go and do something fun like play badminton or go to the pub.
+### Table of model fit stats for comparing models
 
-`sequence_fpoly()` takes similar commands to the `jags()` function above (you can specify the number of iterations, initial values, etc.). You only have to pass it the correct dataset and to specify the fractional polynomial `powers` that you want to explore, as well as the `polyorder` of the fractional polynomial.
+You can easily compare models and check summary statistics for convergence by calling the `summary()` function on an object created by `sequence_fpoly()` (or by using `summary.sequence.fpoly()`). This outputs a tibble (data frame) of model fit statistics and an indicator of convergence based on an Rhat threshold (which you can specify in the function). Note that this is not a fail-safe test for convergence, but is a good rule of thumb. The default cutoff is 1.05.
 
-```{r, results="hide"}
-modseq <- sequence_fpoly(jagsdat, powers=c(-1,-0.5))
+```{r}
+summary(modseq)
 ```
 
-You can also specify a `savefile` (format must be `.rds`) where the resulting set of models should be saved (it saves after each model is run in case something crashes part way through), and set `overwrite==TRUE` if you want the previous `.rds` file to be overwritten (setting it to `FALSE` means that new models will be appended to the existing file). 
-
-The resulting object is a named list of models (so it could be dangerously massive if exploring several 2nd order FP powers). Note that this function does not check for convergence - that's something you have to do yourself (I might write another function for that but that would only rely on checking Rhat values anyway, which isn't perfect). 
-
-If there are errors in running a model (I think for some positive 1st order powers the default initial values might be wrong) then the list element will be the corresponding error message rather than the model results.
-
-Now that I've written it, you could always just use this function to run your models individually as well, without having to specify the file location (etc) shown in the previous section.
-
-
-## Inspecting results
 
 ### Model diagnostics
 
-There are various packages to assess model convergence. The coda one allows lots of detailed investigation of this. But it typically requires running lots of different arguments. I like the `mcmcplots` package because you can run a single command and it outputs an HTML of various diagnostics. The `parms` argument takes the names of monitored nodes that you want to look at diagnostics for. I’m mainly looking at d, since if this converges then other parameters are also likely to have done so.
+It is probably also good to check convergence in more detail for final models, to ensure the treatment effect parameters have converged. 
+
+There are various packages to assess model convergence. The coda one allows lots of detailed investigation of this. But it typically requires running lots of different arguments. I like the `mcmcplots` package because you can run a single command and it outputs an HTML of various diagnostics. The `parms` argument takes the names of monitored nodes that you want to look at diagnostics for. I’m mainly looking at `d`, since if this converges then other parameters are also likely to have done so.
 
 ```{r, eval=FALSE}
 mcmcplot(jagsmod, parms = c("d"))
 ```
 
 
-### Model fit
+### Residual deviance
 
 Model fit can be assessed using residual deviance. This can be plotted for a single model, or two models can be compared (dev-dev plots) using `devplot()`. **Note that for these to work, `dev` and `totresdev` must have been monitored in the model.**
 
@@ -164,15 +180,6 @@ devplot(jagsmod)
 devplot(jagsmod1=modseq$`FP_-1`, jagsmod2=modseq$`FP_-0.5`)
 ```
 
-#### Table of model fit stats for comparing models
-
-You can also easily compare models by calling the `summary()` function on an object created by `sequence_fpoly()` (or by using `summary.sequence.fpoly()`). This outputs a tibble (data frame) of model fit statistics and an indicator of convergence based on an Rhat threshold (which you can specify in the function). Note that this is not a fail-safe test for convergence, but is a good rule of thumb. The default cutoff is 1.05.
-
-```{r}
-summary(modseq)
-```
-
-
 ### Predicted quantities
 
 #### Time-varying hazard ratios
@@ -185,10 +192,10 @@ hazardrats <- hrcalc(jagsmod, times=seq(1,60, length.out=100), eform=TRUE)
 
 The returned object is a list which contains a data frame of posterior summary statistics for all the HRs (every treatment vs every other treatment) at every time-point up to maxt, as well as a full array of all the MCMC samples for the HRs.
 
-These can be plotted by calling plot() on an object of class `"hazard.ratios"` generated by `hrcalc()` (or by using `plot.hazard.ratios()`). reftrt can be used to specify which treatment should be the reference treatment, and all time-varying HRs will be plotted versus this treatment.
+These can be plotted by calling plot() on an object of class `"hazard.ratios"` generated by `hrcalc()` (or by using `plot.hazard.ratios()`). `reftrt` must be used to specify which treatment should be the reference treatment, and all time-varying HRs will be plotted versus this treatment.
 
 ```{r}
-plot(hazardrats, reftrt = 1)
+plot(hazardrats, reftrt = "BCP")
 ```
 
 
@@ -196,13 +203,13 @@ plot(hazardrats, reftrt = 1)
 
 Predictions at specific survival times can be calculated using a specific study baseline. This can be done by passing the JAGS model to `survcalc()`. Within this function, the `times` at which to estimate survival quantities should be specified (for plotting it's best to choose an even sequence of numbers).
 
-The important thing to consider here is which study should be used as baseline. `refstudy` takes the index of the study to use as the reference for predictions, and **generated survival quantities will therefore be specific to the population in this study**.
+The important thing to consider here is which study should be used as baseline. `refstudy` takes the name of the study (it must be named the same as in the original dataset on which the model was run) to use as the reference for predictions. **Generated survival quantities will therefore be specific to the population in this study**.
 
 Note that these calculations can take some time to run (depending on the number of MCMC samples in the model and the number of time-points at which survival quantities should be predicted). To speed up the computation a smaller number for `n.mcmc` can be used. This defines the number of MCMC samples that should be drawn at random for calculations. If left as `NULL` then all the samples will be used. Note that a smaller number will lead to more MCMC error.
 
 ```{r, results="hide"}
 # Generate survival quantities
-surv <- survcalc(jagsmod, refstudy=1)
+surv <- survcalc(jagsmod, refstudy="KEYNOTE-189")
 ```
 
 The resulting object contains the following quantities at each time point and for each treatment, both as arrays of MCMC values and as data frames of posterior summary statistics:
@@ -223,7 +230,7 @@ But a much easier way of understanding the data is to plot these summaries. This
 Within the function you can define the survival quantity to be plotted (`"haz"`, `"cumhaz"`, `"mort"`, `"S"`), the treatments to be plotted (`treats`), and whether the 95% credible intervals should be plotted (`plotinterval=TRUE`)
 
 ```{r}
-plot(surv, quantity="S", treats=c(3,4))
+plot(surv, quantity="S", treats=c("ABCP", "PPCT"))
 ```
 
 It's also possibly to easily calculate the Area Under the Curve (AUC) for any of the predicted quantities using `auc()`. You need to specify a time interval (`tint`) within which AUC should be calculated, and also which quantity you want to calculate AUC for (default is `"S"`).
@@ -234,37 +241,13 @@ print(auc.surv)
 ```
 
 
-Some example code for how survival prediction plots could be used to compare predicted survival across different study baselines (using `ggpubr` package):
-
-```{r, results="hide"}
-# Loop over studies
-glist <- list()
-for (i in 1:4) {
-  surv <- survcalc(jagsmod, refstudy=i, n.mcmc=500)
-  glist[[length(glist)+1]] <- plot(surv, quantity="S", treats=c(1,3))
-}
-```
-```{r}
-ggpubr::ggarrange(glist[[1]], glist[[2]], glist[[3]], glist[[4]])
-```
-
-This isn't the tidiest plot since the legend is repeated...but you get the idea of how the choice of reference study affects the predictions. A better way would be to use the posterior summary data frames from each set of survival predictions and using separate panels in `ggplot` (using the `facet_wrap()` function), but I don't think I need to write a specific function for that because it's probably not terribly useful (let me know if you would like it though!).
-
-
 #### Plotting survival predictions with raw Kaplan-Meier data
 
-We'll look at adding Kaplan-Meier data from KEYNOTE-189, which compared PPCT and PCT (treatments 3 and 4 in our analysis).
-
-```{r}
-ipd1 <- readRDS(system.file("extdata", "PPCT PFS ITT PDL1 LT50pct KEYNOTE189.rds", package="BristolTAG"))
-ipd2 <- readRDS(system.file("extdata", "PCT PFS ITT PDL1 LT50pct KEYNOTE189.rds", package="BristolTAG"))
-```
-
-To add the IPD KM data we specify `kmdat` as a list. Each element is one study arm of IPD data, and the elements **must** be named to match the treatment names (indices) in the dataset, otherwise they won't be plotted. An alternative I could do is to just have it so that you pass a long IPD data frame to `kmdat` that includes a variable for the treatment. But I think that requires (slightly) more data manipulation on the part of the user, even if it does syntactically feel better.
+To add KM data we simply specify the argument `overlay.km=TRUE` in `plot.surv.predicts()`. By default this will use the IPD for the reference study used for the predictions (as this is the only KM data that it makes sense to compare predictions to). In this case it is for the KEYNOTE-189 study.
 
 As you can see, the model below (1st order fractional polynomial with power of -0.5) fits the KEYNOTE-189 data very poorly.
 
 ```{r, warning=FALSE}
-plot(surv, treats=3:4, kmdat = list("3"=ipd1, "4"=ipd2))
+plot(surv, treats=c("PCT", "PPCT"), overlay.km = TRUE)
 ```
 
