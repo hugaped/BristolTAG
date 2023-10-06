@@ -36,26 +36,40 @@ This example uses 1st order fractional polynomials, but it should be pretty obvi
 
 ## Preparing the data
 
-To run the analyses we need to have IPD KM data. This can be digitized using the Guyott method, and other merging, subsetting should also be done prior to this (e.g. need to merge reported PDL-1 categories). There are other functions for this, but I won’t include them in this vignette as that’s a separate workflow. For this we’ll assume that we have IPD KM data that is in the format ready for analysis.
+To run the analyses we need to have IPD KM data. This can be digitized using the Guyott method, and other merging, subsetting should also be done prior to this (e.g. need to merge reported PDL-1 categories). There are other functions for this, but I won’t include them in this vignette as that’s a separate workflow (see `vignette("Extraction", "BristolTAG")`). For this we’ll assume that we have IPD KM data that is in the format ready for analysis.
 
-### Aggregating the data
 
-To run fractional polynomial models on the log-hazard function (the model developed by Jansen), the first step is to aggregate the IPD into specified time intervals using `anova_data()`. We’ll use intervals of 1 week for this example (specified in `timepoints`), but we can look at changing that if we need to.
+### Checking for proportional hazards
 
-The IPD must be a data frame (one row per patient) with the following variables:
+Proportional hazards can be assessed using log-log plots. We can plot these for multiple studies simultaneously using `loglog_plot()`. This takes a data frame of IPD (can be digitized) with one row per patient and the following variables:
 
 * `time` A numeric vector of times at which event/censoring occured
 * `event` A binary vector indicating whether an event (`1`) or censoring (`0`) occured
 * `treatment` A factor variable for treatment name
 * `study` A factor variable for study name
 
-I’ll show this using PFS data for the NS1 node. Treatments are named within the code below, but they can be reordered later in the fractional polynomial data prep function.
+We can then plot the curves, done below using PFS data for the NS1 node. 
 
 ```{r}
 # Load the data to use
 #df <- read.csv("Analysis/NS1/fracpoly/NS1 PFS IPD.csv")
 df <- NS1_PFS # (example here loads it from package to allow vignette to run)
 
+loglog_plot(df)
+```
+
+The output is a `ggpolot` object so you can edit labels, axes, etc. This is the same for all the plots generated in the `BristolTAG` package.
+
+
+### Aggregating the data
+
+To run fractional polynomial models on the log-hazard function (the model developed by Jansen), the first step is to aggregate the IPD into specified time intervals using `anova_data()`. We’ll use intervals of 1 week for this example (specified in `timepoints`), but we can look at changing that if we need to.
+
+The IPD must be in the same format as described above for creating loglog plots. I’ll show this using the same PFS data for the NS1 node.
+
+Treatments are named within the code below, but they can be reordered later in the fractional polynomial data prep function.
+
+```{r}
 # Apply function
 anova <- anova_data(timepoints=seq(0,72, by=1), 
                       df=df)

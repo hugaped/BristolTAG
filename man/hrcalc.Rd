@@ -7,7 +7,7 @@
 \usage{
 hrcalc(jagsmod, times = seq(1, 60, length.out = 100), eform = TRUE)
 
-\method{plot}{hazard.ratios}(hr, reftrt = 1)
+\method{plot}{hazard.ratios}(hr, reftrt)
 }
 \arguments{
 \item{jagsmod}{an object of class `"rjags"` that contains the results of a
@@ -20,7 +20,8 @@ natural (`TRUE`) scale.}
 
 \item{hr}{An object of class `"hazard.ratios"` containing the output of `hrcalc()`}
 
-\item{reftrt}{An index for the reference treatment against which HRs should be plotted}
+\item{reftrt}{The name of the reference treatment against which HRs should be plotted. Must match
+a name in `attr(hr, "trtnames")`}
 }
 \description{
 Calculate time-varying hazard ratios (HR)

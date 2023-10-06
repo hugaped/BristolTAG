@@ -964,3 +964,44 @@ auc <- function(surv, tint=c(1,max(surv$summary[[1]]$time)),
 
   return(sum.df)
 }
+
+
+
+
+
+#' Create log-log plots
+#'
+#' Used to assess the validity of the proportional hazards assumption
+#'
+#' @inheritParams anova_data
+#'
+#' @export
+loglog_plot <- function(df) {
+
+  KM.est <- survfit(Surv(time, event) ~ treatment + study, data=df, type="kaplan-meier")
+
+  # Extract treatments from KM strata
+  treats <- KM.est$strata
+  names(treats) <- trimws(gsub("(treatment=)(.+)(, study.+)", "\\2", names(KM.est$strata)), "right")
+
+  # Extract studies from KM strata
+  studies <- KM.est$strata
+  names(studies) <- trimws(gsub("(treatment=.+, study=)(.+$)", "\\2", names(KM.est$strata)), "right")
+
+  # Create data for plotting
+  plot.df <- data.frame(x=log(KM.est$time), y=-log(-log(KM.est$surv)),
+                        treatment=factor(rep(names(treats), times=treats)),
+                        study=factor(rep(names(studies), times=studies)))
+
+  cols <- RColorBrewer::brewer.pal(n_distinct(plot.df$treatment), "Set1")
+
+  g <- ggplot(plot.df, aes(x=x, y=y, color=treatment)) +
+    geom_line(linewidth=1) +
+    facet_wrap(~study) +
+    xlab("ln(time)") + ylab("-ln(-ln(S))") +
+    scale_color_manual(values=cols, name="Treatment") +
+    #scale_linetype_manual(name="Treatment", values=1:length(cols)) +
+    theme_bw()
+
+  return(g)
+}

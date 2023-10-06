@@ -21,6 +21,9 @@ library(RColorBrewer)
 #df <- read.csv("Analysis/NS1/fracpoly/NS1 PFS IPD.csv")
 df <- NS1_PFS # (example here loads it from package to allow vignette to run)
 
+loglog_plot(df)
+
+## -----------------------------------------------------------------------------
 # Apply function
 anova <- anova_data(timepoints=seq(0,72, by=1), 
                       df=df)

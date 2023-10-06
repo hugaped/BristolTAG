@@ -7,26 +7,26 @@
 \usage{
 survcalc(
   jagsmod,
+  refstudy,
   times = seq(1, 60, length.out = 100),
-  refstudy = 1,
   n.mcmc = 2000
 )
 
 \method{plot}{surv.predicts}(
   surv,
   quantity = "S",
-  treats = surv$treats,
+  treats = attr(surv, "trtnames"),
   plotinterval = TRUE,
-  kmdat = list()
+  overlay.km = FALSE
 )
 }
 \arguments{
 \item{jagsmod}{an object of class `"rjags"` that contains the results of a
 fractional polynomial model.}
 
-\item{times}{a vector of times at which to estimate time-varying HRs}
+\item{refstudy}{Name of the study to use as reference when making predictions. Must match a name in `attr(jagsmod, "studynames")`}
 
-\item{refstudy}{index for the study to use as reference when making predictions.}
+\item{times}{a vector of times at which to estimate time-varying HRs}
 
 \item{n.mcmc}{integer to indicate the number of MCMC samples to draw (without replacement). Note that sampling
 is random (though is the same across parameters to preserve within-sample correlation). Speeds up computation,
@@ -41,11 +41,7 @@ though will result in higher MCMC error.}
 
 \item{plotinterval}{indicates whether to plot 95 percent CrI}
 
-\item{kmdat}{is a list containing data frames of IPD Kaplan-Meier data
-to be added to a survival plot. Each data frame should be of a single study arm and should have 1 row
-per patient and include the variables `time` (time of event) and `event` (1 for event, 0 for censoring).
-List elements should be named by treatment (index) to which they correspond (e.g. list("3"=ipd1, "4"=ipd2)).
-Can only be used if `quantity="S"`.}
+\item{overlay.km}{Indicates whether Kaplan Meier data for the reference study should be plotted}
 }
 \description{
 Outputs survival probabilities (`"S"`), mortality probabilities (`"mort"`),
