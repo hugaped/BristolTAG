@@ -50,14 +50,14 @@ fp_data <- function(anova, trtnames) {
 
   # Need to number the treatment arms within each trial
   data <- data %>%
-    group_by(trialid, spgrp) %>%
-    mutate(arm=seq(n()))
+    dplyr::group_by(trialid, spgrp) %>%
+    dplyr::mutate(arm=seq(n()))
 
   # Drop uneven spgrp within a trial (test if removing makes a difference by using 1st bit of code)
   data <- data %>%
-    group_by(trialid, spgrp) %>%
-    mutate(drop=n()) %>%
-    subset(drop!=1)
+    dplyr::group_by(trialid, spgrp) %>%
+    dplyr::mutate(drop=n()) %>%
+    dplyr::subset(drop!=1)
 
   # data <- data %>%
   #   group_by(trialid, txCode, arm) %>%
@@ -66,9 +66,9 @@ fp_data <- function(anova, trtnames) {
 
   # Maxarm
   data <- data %>%
-    group_by(trialid, spgrp) %>%
-    mutate(maxarm=n()) %>%
-    ungroup()
+    dplyr::group_by(trialid, spgrp) %>%
+    dplyr::mutate(maxarm=n()) %>%
+    dplyr::ungroup()
 
   # Check all arms coded
   #all(data$arm==1 | data$arm==2 | data$arm==3)
@@ -227,7 +227,7 @@ devplot <- function(jagsmod1, jagsmod2=NULL, vline="study") {
 anova_data <- function(timepoints, df){
 
   # Split the data at timepoints
-  df2 <- survSplit(Surv(time, event) ~., data=df,
+  df2 <- survival::survSplit(survival::Surv(time, event) ~., data=df,
                    cut=timepoints[2:length(timepoints)], episode ="timegroup")
 
   # Calculate offset
@@ -238,8 +238,8 @@ anova_data <- function(timepoints, df){
   df2$n <- 1
 
   # Collapse data
-  df3 <- summaryBy(y + event + n ~ timegroup + treatment + study, FUN=c(sum, max), data=df2)
-  df3 <- subset(df3, select=-c(event.max, n.max))
+  df3 <- doBy::summaryBy(y + event + n ~ timegroup + treatment + study, FUN=c(sum, max), data=df2)
+  df3 <- dplyr::subset(df3, select=-c(event.max, n.max))
   names(df3) <- c("spgrp", "treatment", "trialid", "y", "nevents", "natrisk", "y.max")
 
 
@@ -431,7 +431,7 @@ plot.hazard.ratios <- function(hr, reftrt) {
 
   cols <- RColorBrewer::brewer.pal(n_distinct(out.df$trt1), "Set1")
 
-  out.df <- subset(out.df, trt2==reftrt)
+  out.df <- dplyr::subset(out.df, trt2==reftrt)
   cols <- cols[unique(as.numeric(out.df$trt1))]
 
   g <- ggplot(out.df, aes(x=time, ymin=`97.5%`, ymax=`2.5%`, y=`50%`,
@@ -640,7 +640,7 @@ plot.surv.predicts <- function(surv, quantity="S",
   cols <- RColorBrewer::brewer.pal(n_distinct(trtnames), "Set1")
 
   # Subset by treatments
-  out.df <- subset(out.df, trt %in% treats)
+  out.df <- dplyr::subset(out.df, trt %in% treats)
   cols <- cols[unique(as.numeric(out.df$trt))]
 
   capt <- paste0("Fractional polynomial; P1 = ", surv$P1, ifelse(!is.null(surv$P2), paste0(", P2 = ", surv$P2), ""))
@@ -667,7 +667,7 @@ plot.surv.predicts <- function(surv, quantity="S",
     trtnames <- attr(surv, "trtnames")
     ipd$trt <- factor(ipd$treatment, labels=trtnames, levels=trtnames)
 
-    sub <- subset(ipd, study==attr(surv, "refstudy") & trt %in% treats)
+    sub <- dplyr::subset(ipd, study==attr(surv, "refstudy") & trt %in% treats)
 
     kmdat <- survival::survfit(survival::Surv(time, event) ~ trt, data=sub, type="kaplan-meier",)
 
@@ -954,12 +954,12 @@ auc <- function(surv, tint=c(1,max(surv$summary[[1]]$time)),
 
   sum.df <- surv$summary[[quantity]]
 
-  sum.df <- subset(sum.df, time>=tint[1] & time<=tint[2])
+  sum.df <- dplyr::subset(sum.df, time>=tint[1] & time<=tint[2])
 
   # Uses the pracma package
-  sum.df <- sum.df %>% group_by(trt) %>%
-    mutate(auc=pracma::trapz(time, `50%`)) %>%
-    select(trt, auc) %>%
+  sum.df <- sum.df %>% dplyr::group_by(trt) %>%
+    dplyr::mutate(auc=pracma::trapz(time, `50%`)) %>%
+    dplyr::select(trt, auc) %>%
     unique(.)
 
   return(sum.df)
@@ -978,7 +978,7 @@ auc <- function(surv, tint=c(1,max(surv$summary[[1]]$time)),
 #' @export
 loglog_plot <- function(df) {
 
-  KM.est <- survfit(Surv(time, event) ~ treatment + study, data=df, type="kaplan-meier")
+  KM.est <- survival::survfit(survival::Surv(time, event) ~ treatment + study, data=df, type="kaplan-meier")
 
   # Extract treatments from KM strata
   treats <- KM.est$strata
