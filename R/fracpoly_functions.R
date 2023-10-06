@@ -21,6 +21,8 @@
 #' @param trtnames A character vector of treatment names ordered how the treatment codes should be ordered
 #'   within the network
 #'
+#' @importFrom magrittr "%>%"
+#'
 #' @export
 fp_data <- function(anova, trtnames) {
 
@@ -41,7 +43,7 @@ fp_data <- function(anova, trtnames) {
 
 
   # Order data (using tidyverse)
-  data <- arrange(data, trialid, txCode, spgrp)
+  data <- dplyr::arrange(data, trialid, txCode, spgrp)
   #data <- data[order(data$trialid, data$txCode, data$spgrp),]
 
   #-----------------------------------------------------------------------------
@@ -51,12 +53,12 @@ fp_data <- function(anova, trtnames) {
   # Need to number the treatment arms within each trial
   data <- data %>%
     dplyr::group_by(trialid, spgrp) %>%
-    dplyr::mutate(arm=seq(n()))
+    dplyr::mutate(arm=seq(dplyr::n()))
 
   # Drop uneven spgrp within a trial (test if removing makes a difference by using 1st bit of code)
   data <- data %>%
     dplyr::group_by(trialid, spgrp) %>%
-    dplyr::mutate(drop=n()) %>%
+    dplyr::mutate(drop=dplyr::n()) %>%
     subset(drop!=1)
 
   # data <- data %>%
@@ -67,7 +69,7 @@ fp_data <- function(anova, trtnames) {
   # Maxarm
   data <- data %>%
     dplyr::group_by(trialid, spgrp) %>%
-    dplyr::mutate(maxarm=n()) %>%
+    dplyr::mutate(maxarm=dplyr::n()) %>%
     dplyr::ungroup()
 
   # Check all arms coded
@@ -77,11 +79,11 @@ fp_data <- function(anova, trtnames) {
   data$length <- data$time-data$start
 
   # na
-  temp <- data %>% select(trialid, maxarm) %>% unique(.)
+  temp <- data %>% dplyr::select(trialid, maxarm) %>% unique(.)
   na <- temp$maxarm
 
   # t
-  temp <- data %>% select(trialid, txCode) %>% unique(.)
+  temp <- data %>% dplyr::select(trialid, txCode) %>% unique(.)
   t <- matrix(nrow=length(na), ncol=max(na))
   for (i in seq_along(unique(temp$trialid))) {
     sub <- temp[temp$trialid==unique(temp$trialid)[i],]
@@ -98,7 +100,7 @@ fp_data <- function(anova, trtnames) {
   ########### Create JAGS data #########
 
   jagsdat <- list(s=data$trialid, r=data$nevents, z=data$natrisk, a=data$arm, time=data$time,
-                  dt=data$length, N=nrow(data), nt=n_distinct(data$treatment), ns=n_distinct(data$trialid),
+                  dt=data$length, N=nrow(data), nt=dplyr::n_distinct(data$treatment), ns=dplyr::n_distinct(data$trialid),
                   mean=d.mean, prec=precarray,
                   t=t,  na=na)
 
@@ -429,7 +431,7 @@ plot.hazard.ratios <- function(hr, reftrt) {
 
   out.df$trt1 <- factor(out.df$trt1, labels=trtnames, levels=trtnames)
 
-  cols <- RColorBrewer::brewer.pal(n_distinct(out.df$trt1), "Set1")
+  cols <- RColorBrewer::brewer.pal(dplyr::n_distinct(out.df$trt1), "Set1")
 
   out.df <- subset(out.df, trt2==reftrt)
   cols <- cols[unique(as.numeric(out.df$trt1))]
@@ -637,7 +639,7 @@ plot.surv.predicts <- function(surv, quantity="S",
   out.df$trt <- factor(out.df$trt, labels=trtnames, levels=trtnames)
 
   # Define colours
-  cols <- RColorBrewer::brewer.pal(n_distinct(trtnames), "Set1")
+  cols <- RColorBrewer::brewer.pal(dplyr::n_distinct(trtnames), "Set1")
 
   # Subset by treatments
   out.df <- subset(out.df, trt %in% treats)
@@ -669,7 +671,7 @@ plot.surv.predicts <- function(surv, quantity="S",
 
     sub <- subset(ipd, study==attr(surv, "refstudy") & trt %in% treats)
 
-    kmdat <- survival::survfit(survival::Surv(time, event) ~ trt, data=sub, type="kaplan-meier",)
+    kmdat <- survival::survfit(Surv(time, event) ~ trt, data=sub, type="kaplan-meier",)
 
     if (length(treats)>1) {
       trtvec <- vector()
@@ -709,8 +711,8 @@ plot.surv.predicts <- function(surv, quantity="S",
 #'
 mcmc_sum <- function(mcmc) {
   mean <- mean(mcmc)
-  sd <- sd(mcmc)
-  quants <- quantile(mcmc, probs=c(0.025,0.5,0.975))
+  sd <- stats::sd(mcmc)
+  quants <- stats::quantile(mcmc, probs=c(0.025,0.5,0.975))
 
   return(c(mean, sd, quants))
 }
@@ -978,7 +980,7 @@ auc <- function(surv, tint=c(1,max(surv$summary[[1]]$time)),
 #' @export
 loglog_plot <- function(df) {
 
-  KM.est <- survival::survfit(survival::Surv(time, event) ~ treatment + study, data=df, type="kaplan-meier")
+  KM.est <- survival::survfit(Surv(time, event) ~ treatment + study, data=df, type="kaplan-meier")
 
   # Extract treatments from KM strata
   treats <- KM.est$strata
@@ -993,7 +995,7 @@ loglog_plot <- function(df) {
                         treatment=factor(rep(names(treats), times=treats)),
                         study=factor(rep(names(studies), times=studies)))
 
-  cols <- RColorBrewer::brewer.pal(n_distinct(plot.df$treatment), "Set1")
+  cols <- RColorBrewer::brewer.pal(dplyr::n_distinct(plot.df$treatment), "Set1")
 
   g <- ggplot(plot.df, aes(x=x, y=y, color=treatment)) +
     geom_line(linewidth=1) +

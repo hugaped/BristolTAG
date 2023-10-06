@@ -11,15 +11,17 @@ Description: Package contains functions for running analyses in R and generating
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-Suggests: 
-    knitr,
-    rmarkdown,
-    ggplot,
+Imports:
+    magrittr,
     R2jags,
     doBy,
     tidyverse,
     survival,
+Suggests: 
+    knitr,
+    ggplot2,
     RColorBrewer,
+    rmarkdown,
     pracma
 SystemRequirements: JAGS (>= 4.3.0) (https://mcmc-jags.sourceforge.net/)
 VignetteBuilder: knitr
