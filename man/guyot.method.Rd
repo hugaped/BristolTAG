@@ -4,24 +4,16 @@
 \alias{guyot.method}
 \title{Go from KM curve data from published figures into individual-level data}
 \usage{
-guyot.method(
-  x,
-  y,
-  t,
-  r,
-  km_write_path = NULL,
-  ipd_write_path = NULL,
-  tot.events = NA
-)
+guyot.method(time, survival, tint, rint, tot.events = NA)
 }
 \arguments{
-\item{x}{X axis coordinates taken from the digitised Kaplan-Meier curve}
+\item{time}{X axis coordinates taken from the digitised Kaplan-Meier curve}
 
-\item{y}{Y axis coordinates taken from the digitised Kaplan-Meier curve; same length as `x`}
+\item{survival}{Y axis coordinates taken from the digitised Kaplan-Meier curve; same length as `x`}
 
-\item{t}{times at which number at risk `r` is given}
+\item{tint}{times at which number at risk `rint` is given}
 
-\item{r}{number at risk; same length as `t`}
+\item{rint}{number at risk; same length as `tint`}
 
 \item{tot.events}{total number of events reported (integer) (optional - can be left as `NA`)}
 }
@@ -30,10 +22,10 @@ This function is a simple adaptation of code given by Guyot et al., taken from h
 }
 \examples{
 #Make up some data:
-ipd_curve1 <- guyot.method(x = seq(0, 100), y = 1-pexp(seq(0, 100), rate = 1/50),
-             t=c(0, 10, 50), r = c(1000, 800, 250))
-ipd_curve2 <- guyot.method(x = seq(0, 100), y = 1-pexp(seq(0, 100), rate = 1/30),
-             t=c(0, 10, 50), r = c(1000, 700, 100))
+ipd_curve1 <- guyot.method(time = seq(0, 100), survival = 1-pexp(seq(0, 100), rate = 1/50),
+             tint=c(0, 10, 50), rint = c(1000, 800, 250))
+ipd_curve2 <- guyot.method(time = seq(0, 100), survival = 1-pexp(seq(0, 100), rate = 1/30),
+             tint=c(0, 10, 50), rint = c(1000, 700, 100))
 library(survival)
 ipd_curve1$patient$treatment <- "active"
 ipd_curve2$patient$treatment <- "chemo"

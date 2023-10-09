@@ -6,19 +6,19 @@
 #'
 #' This function is a simple adaptation of code given by Guyot et al., taken from https://github.com/certara/survivalnma
 #'
-#' @param x X axis coordinates taken from the digitised Kaplan-Meier curve
-#' @param y Y axis coordinates taken from the digitised Kaplan-Meier curve; same length as `x`
-#' @param t times at which number at risk `r` is given
-#' @param r number at risk; same length as `t`
+#' @param time X axis coordinates taken from the digitised Kaplan-Meier curve
+#' @param survival Y axis coordinates taken from the digitised Kaplan-Meier curve; same length as `x`
+#' @param tint times at which number at risk `rint` is given
+#' @param rint number at risk; same length as `tint`
 #' @param tot.events total number of events reported (integer) (optional - can be left as `NA`)
 #' @export
 #'
 #' @examples
 #' #Make up some data:
-#' ipd_curve1 <- guyot.method(x = seq(0, 100), y = 1-pexp(seq(0, 100), rate = 1/50),
-#'              t=c(0, 10, 50), r = c(1000, 800, 250))
-#' ipd_curve2 <- guyot.method(x = seq(0, 100), y = 1-pexp(seq(0, 100), rate = 1/30),
-#'              t=c(0, 10, 50), r = c(1000, 700, 100))
+#' ipd_curve1 <- guyot.method(time = seq(0, 100), survival = 1-pexp(seq(0, 100), rate = 1/50),
+#'              tint=c(0, 10, 50), rint = c(1000, 800, 250))
+#' ipd_curve2 <- guyot.method(time = seq(0, 100), survival = 1-pexp(seq(0, 100), rate = 1/30),
+#'              tint=c(0, 10, 50), rint = c(1000, 700, 100))
 #' library(survival)
 #' ipd_curve1$patient$treatment <- "active"
 #' ipd_curve2$patient$treatment <- "chemo"
@@ -32,10 +32,14 @@
 #'             Data from Published Kaplan-Meier Survival Curves.”
 #'             BMC Medical Research Methodology 12, no. 1 (February 1, 2012): 9.
 #'             https://doi.org/10.1186/1471-2288-12-9.
-guyot.method <- function(x, y, t, r,
-                         km_write_path=NULL,
-                         ipd_write_path=NULL,
+guyot.method <- function(time, survival, tint, rint,
                          tot.events=NA) {
+
+  x <- time
+  y <- survival
+  t <- tint
+  r <- rint
+
   if(max(y) > 1)
     stop("Survival (y coordinates) can't be greater than 1. Please scale your y to be in [0, 1] range.")
   if(min(x) > 0){
@@ -195,8 +199,6 @@ guyot.method <- function(x, y, t, r,
     }
   }
   wt1 <- matrix(c(t.S,n.hat[1:n.t],d,cen),ncol=4,byrow=F)
-  if(!is.null(km_write_path))
-    utils::write.table(wt1,km_write_path,sep="\t")
 
   ### Now form IPD ###
   #Initialise vectors
@@ -212,6 +214,7 @@ guyot.method <- function(x, y, t, r,
     }
   }
   #Write censor time and event indicator (=0) for each censor, as separate row in t.IPD and event.IPD
+  cen <- abs(cen)
   for (j in 1:(n.t-1)){
     if(cen[j]!=0){
       t.IPD[k:(k+cen[j]-1)]<- rep(((t.S[j]+t.S[j+1])/2),cen[j])
@@ -222,9 +225,6 @@ guyot.method <- function(x, y, t, r,
 
   #Output IPD
   IPD<-matrix(c(t.IPD,event.IPD),ncol=2,byrow=F)
-  if(!is.null(ipd_write_path))
-    utils::write.table(IPD,ipd_write_path,sep="\t")
-
 
   out <- list("curve"=as.data.frame(wt1),
               "patient"=data.frame(time = t.IPD, event = event.IPD))

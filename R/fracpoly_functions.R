@@ -186,18 +186,18 @@ devplot <- function(jagsmod1, jagsmod2=NULL, vline="study") {
     capt2 <- paste0("Total residual deviance for jagsmod2: ", round(jagsmod2$BUGSoutput$mean$totresdev,1))
     capt <- paste(capt, capt2, sep="\n")
 
-    g <- ggplot2::ggplot(data=dev.df, aes(x=dev1, y=dev2)) +
-      geom_point() +
-      xlab(paste("Residual deviance for jagsmod1", info1)) +
-      ylab(paste("Residual deviance for jagsmod2", info2))
+    g <- ggplot2::ggplot(data=dev.df, ggplot2::aes(x=dev1, y=dev2)) +
+      ggplot2::geom_point() +
+      ggplot2::xlab(paste("Residual deviance for jagsmod1", info1)) +
+      ggplot2::ylab(paste("Residual deviance for jagsmod2", info2))
 
   } else {
 
-    g <- ggplot2::ggplot(data=dev.df, aes(x=N, y=dev1)) +
-      geom_point() +
-      geom_vline(xintercept=cuts, linetype="dashed") +
-      ylab(paste("Residual deviance for jagsmod1", info1)) +
-      xlab("Observation number")
+    g <- ggplot2::ggplot(data=dev.df, ggplot2::aes(x=N, y=dev1)) +
+      ggplot2::geom_point() +
+      ggplot2::geom_vline(xintercept=cuts, linetype="dashed") +
+      ggplot2::ylab(paste("Residual deviance for jagsmod1", info1)) +
+      ggplot2::xlab("Observation number")
 
   }
 
@@ -436,17 +436,18 @@ plot.hazard.ratios <- function(hr, reftrt) {
   out.df <- subset(out.df, trt2==reftrt)
   cols <- cols[unique(as.numeric(out.df$trt1))]
 
-  g <- ggplot(out.df, aes(x=time, ymin=`97.5%`, ymax=`2.5%`, y=`50%`,
+  g <- ggplot2::ggplot(out.df, ggplot2::aes(x=time, ymin=`97.5%`, ymax=`2.5%`, y=`50%`,
                           color=trt1, fill=trt1, linetype=trt1)) +
-    geom_line() +
-    geom_ribbon(alpha=0.3) +
-    xlab("Time") + ylab(ifelse(attributes(hr)$eform, "HR", "log-HR")) +
-    theme_bw() +
-    ggtitle(paste0("Time-varying relative effects vs treatment ", unique(out.df$trt2))) +
-    scale_fill_manual(name = "Treatment", values=cols) +
-    scale_color_manual(name = "Treatment", values=cols) +
-    scale_linetype_discrete(name = "Treatment") +
-    labs(caption=paste0("Fractional polynomial; P1 = ", hr$P1, ifelse(!is.null(hr$P2), paste0(", P2 = ", hr$P2), "")))
+    ggplot2::geom_line() +
+    ggplot2::geom_ribbon(alpha=0.3) +
+    ggplot2::xlab("Time") +
+    ggplot2::ylab(ifelse(attributes(hr)$eform, "HR", "log-HR")) +
+    ggplot2::theme_bw() +
+    ggplot2::ggtitle(paste0("Time-varying relative effects vs treatment ", unique(out.df$trt2))) +
+    ggplot2::scale_fill_manual(name = "Treatment", values=cols) +
+    ggplot2::scale_color_manual(name = "Treatment", values=cols) +
+    ggplot2::scale_linetype_discrete(name = "Treatment") +
+    ggplot2::labs(caption=paste0("Fractional polynomial; P1 = ", hr$P1, ifelse(!is.null(hr$P2), paste0(", P2 = ", hr$P2), "")))
 
   return(g)
 }
@@ -648,18 +649,18 @@ plot.surv.predicts <- function(surv, quantity="S",
   capt <- paste0("Fractional polynomial; P1 = ", surv$P1, ifelse(!is.null(surv$P2), paste0(", P2 = ", surv$P2), ""))
   capt <- paste(capt, paste("Reference study:", attr(surv, "refstudy")), sep="\n")
 
-  g <- ggplot(out.df, aes(x=time, ymin=`97.5%`, ymax=`2.5%`, y=`50%`,
+  g <- ggplot2::ggplot(out.df, ggplot2::aes(x=time, ymin=`97.5%`, ymax=`2.5%`, y=`50%`,
                           color=trt, fill=trt, linetype=trt)) +
-    geom_line() +
-    xlab("Time") + ylab(quantity) +
-    theme_bw() +
-    scale_fill_manual(name = "Treatment", values=cols) +
-    scale_color_manual(name = "Treatment", values=cols) +
-    scale_linetype_discrete(name = "Treatment") +
-    labs(caption=capt)
+    ggplot2::geom_line() +
+    ggplot2::xlab("Time") + ggplot2::ylab(quantity) +
+    ggplot2::theme_bw() +
+    ggplot2::scale_fill_manual(name = "Treatment", values=cols) +
+    ggplot2::scale_color_manual(name = "Treatment", values=cols) +
+    ggplot2::scale_linetype_discrete(name = "Treatment") +
+    ggplot2::labs(caption=capt)
 
   if (plotinterval) {
-    g <- g + geom_ribbon(alpha=0.3)
+    g <- g + ggplot2::geom_ribbon(alpha=0.3)
   }
 
   if (overlay.km==TRUE) {
@@ -692,7 +693,7 @@ plot.surv.predicts <- function(surv, quantity="S",
     kmdat[["97.5%"]] <- 0
 
     # Add km plot
-    g <- g + geom_step(data=kmdat, aes(x=time, y=`50%`), color="black", linetype="solid")
+    g <- g + ggplot2::geom_step(data=kmdat, ggplot2::aes(x=time, y=`50%`), color="black", linetype="solid")
   }
 
   return(g)
@@ -835,10 +836,6 @@ sequence_fpoly <- function(jagsdat, powers=c(-3,-2,-1,-0.5,0,0.5,1,2,3), polyord
                                                         parameters.to.save=c("d", "mu", "dev", "totresdev"),
                                                         model.file=system.file("JAGSmodels", "FE_2nd_order_model.jags", package="BristolTAG")
           )))
-
-          attr(jagsmod, "trtnames") <- attr(jagsdat, "trtnames")
-          attr(jagsmod, "studynames") <- attr(jagsdat, "studynames")
-          attr(jagsmod, "ipd") <- attr(jagsdat, "ipd")
         },
         error=function(cond) {
           message(cond)
@@ -893,7 +890,7 @@ summary.sequence.fpoly <- function(object, rhat=1.05, ...) {
     stop("object must be an object of class 'sequence.fpoly' generated by sequence_fpoly()")
   }
 
-  out.df <- tibble("model"=NA, "totresdev"=NA, "pv"=NA, "DIC"=NA, converged=NA, ...)
+  out.df <- dplyr::tibble("model"=NA, "totresdev"=NA, "pv"=NA, "DIC"=NA, converged=NA, ...)
 
   for (mod in seq_along(object)) {
 
@@ -910,7 +907,7 @@ summary.sequence.fpoly <- function(object, rhat=1.05, ...) {
       # Convergence check
       ind <- grep("d\\[", rownames(object[[mod]]$BUGSoutput$summary))
       ind <- append(ind, grep("mu\\[", rownames(object[[mod]]$BUGSoutput$summary)))
-      con <- any(object[[mod]]$BUGSoutput$summary[ind, "Rhat"]>=rhat)
+      con <- all(object[[mod]]$BUGSoutput$summary[ind, "Rhat"]<rhat)
 
       out.df <- out.df %>% add_row(model=names(object)[mod],
                                    totresdev=round(mean(object[[mod]]$BUGSoutput$mean$totresdev),2),
@@ -922,6 +919,14 @@ summary.sequence.fpoly <- function(object, rhat=1.05, ...) {
     }
   }
   out.df <- out.df[-1,]
+
+  # Add FP powers
+  if (class(object) %in% "sequence.fpoly") {
+    out.df$P1 <- as.numeric(sapply(out.df$model, FUN=function(x) strsplit(x, "_")[[1]][2]))
+    out.df$P2 <- as.numeric(sapply(out.df$model, FUN=function(x) strsplit(x, "_")[[1]][3]))
+
+    out.df <- out.df[,c("model", "P1", "P2", "totresdev", "pv", "DIC", "converged")]
+  }
 
   return(out.df)
 }
@@ -997,13 +1002,13 @@ loglog_plot <- function(df) {
 
   cols <- RColorBrewer::brewer.pal(dplyr::n_distinct(plot.df$treatment), "Set1")
 
-  g <- ggplot(plot.df, aes(x=x, y=y, color=treatment)) +
-    geom_line(linewidth=1) +
-    facet_wrap(~study) +
-    xlab("ln(time)") + ylab("-ln(-ln(S))") +
-    scale_color_manual(values=cols, name="Treatment") +
-    #scale_linetype_manual(name="Treatment", values=1:length(cols)) +
-    theme_bw()
+  g <- ggplot2::ggplot(plot.df, ggplot2::aes(x=x, y=y, color=treatment)) +
+    ggplot2::geom_line(linewidth=1) +
+    ggplot2::facet_wrap(~study) +
+    ggplot2::xlab("ln(time)") + ggplot2::ylab("-ln(-ln(S))") +
+    ggplot2::scale_color_manual(values=cols, name="Treatment") +
+    #ggplot2::scale_linetype_manual(name="Treatment", values=1:length(cols)) +
+    ggplot2::theme_bw()
 
   return(g)
 }
