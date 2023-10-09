@@ -271,30 +271,31 @@ anova_data <- function(timepoints, df){
 #' Assumes 3 chains
 #'
 #' @param ns An integer for the number of studies in the analysis
+#' @param nt An integer for the number of treatments in the analysis
 #' @param polyorder Takes 1 for 1st order and 2 for 2nd order fractional polynomials
 #' @param seed Can be set to `NULL` if no seed is desired
 #'
 #' @export
-fp_geninits <- function(ns=4, polyorder=1, seed=890421) {
+fp_geninits <- function(ns, nt, polyorder=1, seed=890421) {
 
   if (!is.null(seed)) {
     set.seed <- seed
   }
 
   init1 <- list()
-  init1$d <- matrix(nrow=ns, ncol=polyorder+1, 0.1)
+  init1$d <- matrix(nrow=nt, ncol=polyorder+1, 0.1)
   init1$mu <- matrix(nrow=ns, ncol=polyorder+1,
                      round(runif(ns*(polyorder+1), 0.1, 0.6), 1))
   init1$d[1,] <- NA
 
   init2 <- list()
-  init2$d <- matrix(nrow=ns, ncol=polyorder+1, 0.2)
+  init2$d <- matrix(nrow=nt, ncol=polyorder+1, 0.2)
   init2$mu <- matrix(nrow=ns, ncol=polyorder+1,
                      round(runif(ns*(polyorder+1), -0.2, 0.7), 1))
   init2$d[1,] <- NA
 
   init3 <- list()
-  init3$d <- matrix(nrow=ns, ncol=polyorder+1, round(runif(ns*(polyorder+1), -0.1,0.1),1))
+  init3$d <- matrix(nrow=nt, ncol=polyorder+1, round(runif(nt*(polyorder+1), -0.1,0.1),1))
   init3$mu <- matrix(nrow=ns, ncol=polyorder+1,
                      round(runif(ns*(polyorder+1), -0.1, 0.7), 1))
   init3$d[1,] <- NA
@@ -744,7 +745,7 @@ mcmc_sum <- function(mcmc) {
 #' @export
 sequence_fpoly <- function(jagsdat, powers=c(-3,-2,-1,-0.5,0,0.5,1,2,3), polyorder=1,
                            savefile=NULL, overwrite=TRUE,
-                           inits=fp_geninits(ns=jagsdat$nt, polyorder=polyorder, seed=890421),
+                           inits=fp_geninits(ns=jagsdat$ns, nt=jagsdat$nt, polyorder=polyorder, seed=890421),
                            ...) {
 
   args <- list(...)

@@ -4,10 +4,12 @@
 \alias{fp_geninits}
 \title{Create initial values for model}
 \usage{
-fp_geninits(ns = 4, polyorder = 1, seed = 890421)
+fp_geninits(ns, nt, polyorder = 1, seed = 890421)
 }
 \arguments{
 \item{ns}{An integer for the number of studies in the analysis}
+
+\item{nt}{An integer for the number of treatments in the analysis}
 
 \item{polyorder}{Takes 1 for 1st order and 2 for 2nd order fractional polynomials}
 
