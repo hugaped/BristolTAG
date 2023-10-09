@@ -10,7 +10,7 @@ sequence_fpoly(
   polyorder = 1,
   savefile = NULL,
   overwrite = TRUE,
-  inits = fp_geninits(ns = jagsdat$ns, polyorder = polyorder, seed = 890421),
+  inits = fp_geninits(ns = jagsdat$nt, polyorder = polyorder, seed = 890421),
   ...
 )
 }

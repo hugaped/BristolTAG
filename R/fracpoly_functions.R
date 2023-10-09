@@ -744,7 +744,7 @@ mcmc_sum <- function(mcmc) {
 #' @export
 sequence_fpoly <- function(jagsdat, powers=c(-3,-2,-1,-0.5,0,0.5,1,2,3), polyorder=1,
                            savefile=NULL, overwrite=TRUE,
-                           inits=fp_geninits(ns=jagsdat$ns, polyorder=polyorder, seed=890421),
+                           inits=fp_geninits(ns=jagsdat$nt, polyorder=polyorder, seed=890421),
                            ...) {
 
   args <- list(...)
