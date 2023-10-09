@@ -9,7 +9,7 @@ survcalc(
   jagsmod,
   refstudy,
   times = seq(1, 60, length.out = 100),
-  n.mcmc = 2000
+  n.mcmc = NULL
 )
 
 \method{plot}{surv.predicts}(

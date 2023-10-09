@@ -344,54 +344,38 @@ hrcalc <- function(jagsmod,
   }
 
   jagsdat <- jagsmod$model$data()
+  sims.list <- jagsmod$BUGSoutput$sims.list
 
-  time1 <- vector()
-  for (i in seq_along(times)) {
+  d  <- sims.list$d
 
-    # For 2nd order FP
-    if ("P2" %in% names(jagsdat)) {
-      time1 <- append(time1,  ifelse(jagsdat$P1==0, log(i), i^jagsdat$P1) +
-                        ifelse(jagsdat$P2==0, log(i), i^jagsdat$P2))
-    } else {
-      # For 1st order FP
-      time1 <- append(time1,  ifelse(jagsdat$P1==0, log(i), i^jagsdat$P1))
-    }
+  exponents <- jagsdat$P1
+  if (!is.null(jagsdat$P2)) {
+    exponents <- c(exponents, jagsdat$P2)
   }
 
+  out.df <- data.frame()
+  for (k in 1:jagsdat$nt) {
+    for (c in 1:jagsdat$nt) {
+      beta <- d[,k,] - d[,c,]
 
-  d <- jagsmod$BUGSoutput$sims.list$d
-  mu <- jagsmod$BUGSoutput$sims.list$mu
-  loghr <- array(dim=c(jagsdat$nt, jagsdat$nt, length(times), jagsmod$BUGSoutput$n.sims))
-  out.df <- data.frame(trt1=NA, trt2=NA, time=NA, mean=NA, sd=NA, '2.5%'=NA, '50%'=NA, '95.%'=NA)
+      loghr <- get_fp(x = times,
+                       params = beta,
+                       exponents = exponents)
 
-  for (m in seq_along(times)) {
-    for (i in 1:(jagsdat$nt-1)) {
-      for (k in (i+1):jagsdat$nt) {
-        loghr[i,k,m,] <- (d[,k,1]-d[,i,1]) + ((d[,k,2]-d[,i,2]) * time1[m])
-        loghr[k,i,m,] <- (d[,i,1]-d[,k,1]) + ((d[,i,2]-d[,k,2]) * time1[m])
-
-        if (eform==TRUE) {
-          loghr[i,k,m,] <- exp(loghr[i,k,m,])
-          loghr[k,i,m,] <- exp(loghr[k,i,m,])
-        }
+      if (eform==TRUE) {
+        loghr <- exp(loghr)
       }
-    }
 
-    for (i in 1:(jagsdat$nt)) {
-      for (k in 1:(jagsdat$nt)) {
-        if (k!=i) {
-          # mean <- mean(loghr[i,k,m,])
-          # sd <- sd(loghr[i,k,m,])
-          # quants <- quantile(loghr[i,k,m,], probs=c(0.025,0.5,0.975))
+      loghr_sum <- t(apply(loghr, MAR = 1, FUN = mcmc_sum))
+      temp <- data.frame(trt1=k,
+                         trt2=c,
+                         time=times,
+                         loghr_sum
+                         )
 
-          row <- c(k, i, times[m], mcmc_sum(loghr[i,k,m,]))
-
-          out.df <- rbind(out.df, row)
-        }
-      }
+      out.df <- rbind(out.df, temp)
     }
   }
-  out.df <- out.df[-1,]
   names(out.df) <- c("trt1", "trt2", "time", "mean", "sd", "2.5%", "50%", "97.5%")
 
   # Assign trtnames to out.df
@@ -399,7 +383,7 @@ hrcalc <- function(jagsmod,
   out.df$trt1 <- trtnames[out.df$trt1]
   out.df$trt2 <- trtnames[out.df$trt2]
 
-  out <- list(summary=out.df, array=loghr,
+  out <- list(summary=out.df,
               P1=jagsmod$model$data()$P1, P2=jagsmod$model$data()$P2)
 
   # Set attributes to match those of jagsdat
@@ -469,7 +453,7 @@ plot.hazard.ratios <- function(hr, reftrt) {
 #'
 #' @export
 survcalc <- function(jagsmod, refstudy, times=seq(1,60, length.out=100),
-                     n.mcmc=2000) {
+                     n.mcmc=NULL) {
 
   if (!"rjags" %in% class(jagsmod)) {
     stop("jagsmod must be an object of class rjags")
@@ -483,15 +467,16 @@ survcalc <- function(jagsmod, refstudy, times=seq(1,60, length.out=100),
     polyorder <- 2
   }
 
+  # Speeds up computation
   if (!is.null(n.mcmc)) {
     mcmc.index <- sample(1:jagsmod$n.iter, size=n.mcmc)
     matsize <- n.mcmc
   } else {
+    mcmc.index <- 1:jagsmod$n.iter
     matsize <- jagsmod$BUGSoutput$n.sims
   }
 
   jagsdat <- jagsmod$model$data()
-  #jagsdat$nt <- jagsdat$Ntrt
   sims.list <- jagsmod$BUGSoutput$sims.list
 
   # Get index of reference study
@@ -499,107 +484,73 @@ survcalc <- function(jagsmod, refstudy, times=seq(1,60, length.out=100),
 
   reftrt <- jagsdat$t[refstudy.ind,1]
 
-  if (jagsdat$P1==0) {
-    fptimes1 <- log(times)
-  } else {
-    fptimes1 <- times^jagsdat$P1
+  haz.df <- data.frame()
+  cumhaz.df <- data.frame()
+  mort.df <- data.frame()
+  S.df <- data.frame()
+
+  mu <- sims.list$mu[, refstudy.ind, ]
+  d  <- sims.list$d
+
+  exponents <- jagsdat$P1
+  if (!is.null(jagsdat$P2)) {
+    exponents <- c(exponents, jagsdat$P2)
   }
 
-  if (polyorder==2) {
-    if (jagsdat$P2!=jagsdat$P1) {
-      if (jagsdat$P2==0) {
-        fptimes2 <- log(times)
-      } else {
-        fptimes2 <- times^jagsdat$P2
-      }
-    } else if (jagsdat$P2==jagsdat$P1) {
-      if (jagsdat$P2==0) {
-        fptimes2 <- log(times) * log(times)
-      } else {
-        fptimes2 <- (times^jagsdat$P2) * log(times)
-      }
-    }
+  dt <- diff(c(0,times))
+
+  for (k in 1:jagsdat$nt) {
+    beta <- mu[mcmc.index,] + d[mcmc.index,k,]
+
+    loghaz <- get_fp(x = times,
+                     params = beta,
+                     exponents = exponents)
+
+    haz <- exp(loghaz)
+
+    #dH <- dt * haz # approximate the cumulative hazard (for every MCMC iteration); first calculate the incerments over every interval, then sum up
+    #H  <- apply(dH, MAR = 2, cumsum)
+    H  <- apply(haz, MAR = 2, cumsum)
+    mort <- 1-exp(-H)
+    S  <- exp(-H)
+
+    # Create data frames
+    S_sum <- t(apply(S, MAR = 1, FUN = mcmc_sum))
+    temp <- data.frame(time = times,
+                       treatment = k,
+                       S_sum)
+    S.df <- rbind(S.df, temp)
+
+    mort_sum <- t(apply(mort, MAR = 1, FUN = mcmc_sum))
+    temp <- data.frame(time = times,
+                       treatment = k,
+                       mort_sum)
+    mort.df <- rbind(mort.df, temp)
+
+    cumhaz_sum <- t(apply(H, MAR = 1, FUN = mcmc_sum))
+    temp <- data.frame(time = times,
+                       treatment = k,
+                       cumhaz_sum)
+    cumhaz.df <- rbind(cumhaz.df, temp)
+
+    haz_sum <- t(apply(haz, MAR = 1, FUN = mcmc_sum))
+    temp <- data.frame(time = times,
+                       treatment = k,
+                       haz_sum)
+    haz.df <- rbind(haz.df, temp)
   }
 
-
-
-  alpha <- array(dim=c(matsize, jagsdat$nt, polyorder+1))
-
-  haz <- array(dim=c(matsize, jagsdat$nt, length(times)))
-  cumhaz <- haz
-  mort <- haz
-  S <- haz
-
-  haz.df <- data.frame(trt=NA, time=NA, mean=NA, sd=NA, '2.5%'=NA, '50%'=NA, '95.%'=NA)
-  cumhaz.df <- haz.df
-  mort.df <- haz.df
-  S.df <- haz.df
-
-  # Speeds up computation
-  if (!is.null(n.mcmc)) {
-    for (k in 1:jagsdat$nt) {
-
-      for (p in 1:dim(alpha)[3]) {
-        alpha[,k,p] <-
-          sims.list$mu[mcmc.index,refstudy.ind,p] + sims.list$d[mcmc.index,k,p] - sims.list$d[mcmc.index,reftrt,p]
-      }
-    }
-  } else {
-    for (k in 1:jagsdat$nt) {
-      for (p in 1:dim(alpha)[3]) {
-        alpha[,k,p] <-
-          sims.list$mu[,refstudy.ind,p] + sims.list$d[,k,p] - sims.list$d[,reftrt,p]
-      }
-    }
-  }
-
-  # This is slow - there may be ways to improve the efficiency
-  pb <- txtProgressBar(min = 0, max = length(times), initial = 0, style=3)
-  for (m in seq_along(times)) {
-    setTxtProgressBar(pb,m)
-    for (k in 1:jagsdat$nt) {
-      # MCMC calcs
-      loghaz <- alpha[,k,1] + alpha[,k,2] * fptimes1[m]
-      if (polyorder==2) {
-        loghaz <- loghaz + alpha[,k,3] * fptimes2[m]
-      }
-      haz[,k,m] <- exp(loghaz)
-      cumhaz[,k,m] <- apply(haz[,k,], MARGIN=c(1), FUN=function(x,row) {sum(x[1:row], na.rm=TRUE)}, row=m)
-
-      # Posterior summaries for loghaz and cumhaz
-      haz.df <- rbind(haz.df, c(k, times[m], mcmc_sum(haz[,k,m])))
-      cumhaz.df <- rbind(cumhaz.df, c(k, times[m], mcmc_sum(cumhaz[,k,m])))
-    }
-
-    # MCMC calcs
-    mort[,,m] <- 1-exp(-cumhaz[,,m])
-    S[,,m] <- 1-mort[,,m]
-
-    for (k in 1:jagsdat$nt) {
-      mort.df <- rbind(mort.df, c(k, times[m], mcmc_sum(mort[,k,m])))
-      S.df <- rbind(S.df, c(k, times[m], mcmc_sum(S[,k,m])))
-    }
-  }
-  close(pb)
-
-  haz.df <- haz.df[-1,]
-  cumhaz.df <- cumhaz.df[-1,]
-  mort.df <- mort.df[-1,]
-  S.df <- S.df[-1,]
   names(haz.df) <- names(cumhaz.df) <- names(mort.df) <- names(S.df) <-
-    c("trt", "time", "mean", "sd", "2.5%", "50%", "97.5%")
+    c("time", "treatment", "mean", "sd", "2.5%", "50%", "97.5%")
 
   # Add treatment names
   trtnames <- attr(jagsmod, "trtnames")
-  haz.df$trt <- trtnames[haz.df$trt]
-  cumhaz.df$trt <- trtnames[cumhaz.df$trt]
-  mort.df$trt <- trtnames[mort.df$trt]
-  S.df$trt <- trtnames[S.df$trt]
+  haz.df$treatment <- trtnames[haz.df$treatment]
+  cumhaz.df$treatment <- trtnames[cumhaz.df$treatment]
+  mort.df$treatment <- trtnames[mort.df$treatment]
+  S.df$treatment <- trtnames[S.df$treatment]
 
-  surv.arrays <- list(haz=haz, cumhaz=cumhaz, mort=mort, S=S)
-  surv.sum <- list(haz=haz.df, cumhaz=cumhaz.df, mort=mort.df, S=S.df)
-
-  out <- list(summary=surv.sum, mcmc=surv.arrays,
+  out <- list(haz=haz.df, cumhaz=cumhaz.df, mort=mort.df, S=S.df,
               P1=jagsdat$P1, P2=jagsdat$P2)
 
   attr(out, "refstudy") <- refstudy
@@ -635,23 +586,23 @@ plot.surv.predicts <- function(surv, quantity="S",
     stop("Plotting IPD Kaplan-Meier data is only possible if quantity='S'")
   }
 
-  out.df <- surv$summary[[quantity]]
+  out.df <- surv[[quantity]]
 
   trtnames <- attr(surv, "trtnames")
-  out.df$trt <- factor(out.df$trt, labels=trtnames, levels=trtnames)
+  out.df$treatment <- factor(out.df$treatment, labels=trtnames, levels=trtnames)
 
   # Define colours
   cols <- RColorBrewer::brewer.pal(dplyr::n_distinct(trtnames), "Set1")
 
   # Subset by treatments
-  out.df <- subset(out.df, trt %in% treats)
-  cols <- cols[unique(as.numeric(out.df$trt))]
+  out.df <- subset(out.df, treatment %in% treats)
+  cols <- cols[unique(as.numeric(out.df$treatment))]
 
   capt <- paste0("Fractional polynomial; P1 = ", surv$P1, ifelse(!is.null(surv$P2), paste0(", P2 = ", surv$P2), ""))
   capt <- paste(capt, paste("Reference study:", attr(surv, "refstudy")), sep="\n")
 
   g <- ggplot2::ggplot(out.df, ggplot2::aes(x=time, ymin=`97.5%`, ymax=`2.5%`, y=`50%`,
-                          color=trt, fill=trt, linetype=trt)) +
+                          color=treatment, fill=treatment, linetype=treatment)) +
     ggplot2::geom_line() +
     ggplot2::xlab("Time") + ggplot2::ylab(quantity) +
     ggplot2::theme_bw() +
@@ -669,27 +620,27 @@ plot.surv.predicts <- function(surv, quantity="S",
     # Get IPD data into correct format
     ipd <- attr(surv, "ipd")
     trtnames <- attr(surv, "trtnames")
-    ipd$trt <- factor(ipd$treatment, labels=trtnames, levels=trtnames)
+    ipd$treatment <- factor(ipd$treatment, labels=trtnames, levels=trtnames)
 
-    sub <- subset(ipd, study==attr(surv, "refstudy") & trt %in% treats)
+    sub <- subset(ipd, study==attr(surv, "refstudy") & treatment %in% treats)
 
-    kmdat <- survival::survfit(Surv(time, event) ~ trt, data=sub, type="kaplan-meier",)
+    kmdat <- survival::survfit(Surv(time, event) ~ treatment, data=sub, type="kaplan-meier",)
 
     if (length(treats)>1) {
       trtvec <- vector()
-      for (i in seq_along(unique(sub$trt))) {
-        trtvec <- append(trtvec, rep(unique(sub$trt)[i], kmdat$strata[i]))
+      for (i in seq_along(unique(sub$treatment))) {
+        trtvec <- append(trtvec, rep(unique(sub$treatment)[i], kmdat$strata[i]))
       }
     } else {
-      trtvec <- rep(unique(sub$trt),length(kmdat$time))
+      trtvec <- rep(unique(sub$treatment),length(kmdat$time))
     }
 
     kmdat <- cbind(kmdat$time, kmdat$surv, trtvec)
 
     kmdat <- as.data.frame(kmdat)
 
-    names(kmdat) <- c("time", "50%", "trt")
-    kmdat$trt <- factor(kmdat$trt, labels=trtnames, levels=1:length(trtnames))
+    names(kmdat) <- c("time", "50%", "treatment")
+    kmdat$treatment <- factor(kmdat$treatment, labels=trtnames, levels=1:length(trtnames))
     kmdat[["2.5%"]] <- 0
     kmdat[["97.5%"]] <- 0
 
@@ -949,7 +900,7 @@ summary.sequence.fpoly <- function(object, rhat=1.05, ...) {
 #' Function uses the `pracma` package for integration, so this must be installed.
 #'
 #' @export
-auc <- function(surv, tint=c(1,max(surv$summary[[1]]$time)),
+auc <- function(surv, tint=c(1,max(surv[[1]]$time)),
                               quantity="S"
                               ) {
 
@@ -960,14 +911,14 @@ auc <- function(surv, tint=c(1,max(surv$summary[[1]]$time)),
     stop("tint must have length 2")
   }
 
-  sum.df <- surv$summary[[quantity]]
+  sum.df <- surv[[quantity]]
 
   sum.df <- subset(sum.df, time>=tint[1] & time<=tint[2])
 
   # Uses the pracma package
-  sum.df <- sum.df %>% dplyr::group_by(trt) %>%
+  sum.df <- sum.df %>% dplyr::group_by(treatment) %>%
     dplyr::mutate(auc=pracma::trapz(time, `50%`)) %>%
-    dplyr::select(trt, auc) %>%
+    dplyr::select(treatment, auc) %>%
     unique(.)
 
   return(sum.df)
@@ -1005,7 +956,7 @@ loglog_plot <- function(df) {
 
   g <- ggplot2::ggplot(plot.df, ggplot2::aes(x=x, y=y, color=treatment)) +
     ggplot2::geom_line(linewidth=1) +
-    ggplot2::facet_wrap(~study) +
+    ggplot2::facet_wrap(~study, scales="free") +
     ggplot2::xlab("ln(time)") + ggplot2::ylab("-ln(-ln(S))") +
     ggplot2::scale_color_manual(values=cols, name="Treatment") +
     #ggplot2::scale_linetype_manual(name="Treatment", values=1:length(cols)) +
@@ -1013,3 +964,79 @@ loglog_plot <- function(df) {
 
   return(g)
 }
+
+
+
+
+
+
+
+
+#' First order fractional polynomial
+#'
+#' @param x A vector with the dependent variable (time).
+#' @param params A matrix with 2-3 columns (depending on the fractional polynomial order)
+#'   giving the intercept and the "slope". If more than one rows given, the fractional polynomial
+#'   is evaluated for each row.
+#' @param exponent A vector of integers giving the exponent(s) (p1 or c(p1,p2)) of the polynomial.
+#'
+#' @details
+#' Function copied and edited from gemtcPlus (https://github.com/Roche/gemtcPlus/tree/main)
+#'
+#' @return A matrix with length(x) rows giving the FP values or FP summaries.
+#' @export
+#'
+get_fp <- function(x, params, exponents, sums=NULL){
+
+  # 1st order
+  if (length(exponents)==1) {
+    if (exponents == 0){
+      xt <- log(x)
+    } else {
+      xt <- x^exponents
+    }
+
+    X <- cbind(1, xt)
+
+  # 2nd order
+  } else if (length(exponents)==2) {
+
+    if (exponents[1] == 0){
+      xt1 <- log(x)
+    } else {
+      xt1 <- x^exponents[1]
+    }
+    if (exponents[1] != exponents[2]){
+      if (exponents[2] == 0){
+        xt2 <- log(x)
+      } else {
+        xt2 <- x^exponents[2]
+      }
+    } else {
+      if (exponents[2] == 0){
+        xt2 <- log(x)^2
+      } else {
+        xt2 <- x^exponents[2] * log(x)
+      }
+    }
+
+    X <- cbind(1, xt1, xt2)
+
+  } else {
+    stop("exponents must be length 1 or 2 for 1st and 2nd order models respectively")
+  }
+
+  if (is.vector(params)) {
+    params <- matrix(params, ncol = 1)
+  }
+  if (dim(X)[2] != dim(params)[1]){
+    params <- t(params)
+  }
+
+  out <- X %*% params
+
+  return(out)
+}
+
+
+
