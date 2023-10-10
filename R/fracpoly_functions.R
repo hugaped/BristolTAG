@@ -469,10 +469,10 @@ survcalc <- function(jagsmod, refstudy, times=seq(1,60, length.out=100),
 
   # Speeds up computation
   if (!is.null(n.mcmc)) {
-    mcmc.index <- sample(1:jagsmod$n.iter, size=n.mcmc)
+    mcmc.index <- sample(1:jagsmod$BUGSoutput$n.sims, size=n.mcmc)
     matsize <- n.mcmc
   } else {
-    mcmc.index <- 1:jagsmod$n.iter
+    mcmc.index <- 1:jagsmod$BUGSoutput$n.sims
     matsize <- jagsmod$BUGSoutput$n.sims
   }
 
@@ -508,9 +508,9 @@ survcalc <- function(jagsmod, refstudy, times=seq(1,60, length.out=100),
 
     haz <- exp(loghaz)
 
-    #dH <- dt * haz # approximate the cumulative hazard (for every MCMC iteration); first calculate the incerments over every interval, then sum up
-    #H  <- apply(dH, MAR = 2, cumsum)
-    H  <- apply(haz, MAR = 2, cumsum)
+    dH <- dt * haz # approximate the cumulative hazard (for every MCMC iteration); first calculate the incerments over every interval, then sum up
+    H  <- apply(dH, MAR = 2, cumsum)
+    #H  <- apply(haz, MAR = 2, cumsum)
     mort <- 1-exp(-H)
     S  <- exp(-H)
 
@@ -805,7 +805,7 @@ sequence_fpoly <- function(jagsdat, powers=c(-3,-2,-1,-0.5,0,0.5,1,2,3), polyord
         attr(out, "ipd") <- attr(jagsdat, "ipd")
         modseq[[modnam]] <- out
 
-        if (!is.null(savefile)) {
+        if (!is.null(savefile) & !("error" %in% names(out))) {
           saveRDS(modseq, file=savefile)
         }
       }
