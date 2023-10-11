@@ -16,7 +16,7 @@ library(doBy)
 library(survival)
 library(RColorBrewer)
 
-## -----------------------------------------------------------------------------
+## ---- test--------------------------------------------------------------------
 # Load the data to use
 #df <- read.csv("Analysis/NS1/fracpoly/NS1 PFS IPD.csv")
 df <- NS1_PFS # (example here loads it from package to allow vignette to run)
@@ -32,7 +32,7 @@ anova <- anova_data(timepoints=seq(0,72, by=1),
 jagsdat <- fp_data(anova, trtnames=c("BCP", "ABCP", "PPCT", "PCT"))
 
 ## -----------------------------------------------------------------------------
-inits <- fp_geninits(ns=4, polyorder=1, seed=890421)
+inits <- fp_geninits(ns=4, nt=4, polyorder=1, seed=890421)
 
 ## ---- results="hide"----------------------------------------------------------
 modseq <- sequence_fpoly(jagsdat, powers=c(-1,-0.5), polyorder=1, inits=inits)
@@ -84,7 +84,7 @@ plot(hazardrats, reftrt = "BCP")
 surv <- survcalc(jagsmod, refstudy="KEYNOTE-189")
 
 ## -----------------------------------------------------------------------------
-head(surv$summary$S)
+head(surv$S)
 
 ## -----------------------------------------------------------------------------
 plot(surv, quantity="S", treats=c("ABCP", "PPCT"))
@@ -95,4 +95,10 @@ print(auc.surv)
 
 ## ---- warning=FALSE-----------------------------------------------------------
 plot(surv, treats=c("PCT", "PPCT"), overlay.km = TRUE)
+
+## -----------------------------------------------------------------------------
+g <- studykm_survplot(jagsmod) +
+  geom_km(anova$ipd)
+
+plot(g)
 

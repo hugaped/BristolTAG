@@ -653,6 +653,133 @@ plot.surv.predicts <- function(surv, quantity="S",
 
 
 
+#' Adds a geom-ish object for Kaplan-Meier data
+#'
+#' Function has been frankensteined from multinma (https://github.com/dmphillippo/multinma/tree/develop)
+#'
+#' @param ... Additional arguments passed to [survival::survfit()]
+#' @param curve_args Optional list of arguments to customise the curves plotted
+#' with [ggplot2::geom_step()]
+#' @inheritParams anova_data
+#'
+#' @export
+geom_km <- function(df, curve_args = list(), ...) {
+  dots <- list(...)
+
+  # Get KM fits
+  # trtnames <- attr(surv, "trtnames")
+  # ipd$treatment <- factor(ipd$treatment, labels=trtnames, levels=trtnames)
+
+  kmdat <- df %>%
+    dplyr::group_by(study, treatment) %>%
+    dplyr::group_modify(~dplyr::as_tibble(unclass(
+      do.call(survival::survfit, rlang::dots_list(formula = Surv(time, event) ~ 1, !!! dots,  data = ., .homonyms = "last"))
+    )[c("time", "n.censor", "surv", "std.err", "upper", "lower")])) %>%
+    # Add S(0) = 1
+    dplyr::group_modify(~dplyr::add_row(., time = 0, n.censor = 0, surv = 1, std.err = 0, upper = 1, lower = 1, .before = 0)) %>%
+    dplyr::mutate(treatment = treatment, refstudy = study)
+
+  #return(kmdat)
+
+  # Set geom args
+  curve_args <- rlang::dots_list(ggplot2::aes(x = kmdat$time, y = kmdat$surv,
+                                              #color=kmdat$treatment,
+                                              group = interaction(kmdat$refstudy, kmdat$treatment)),
+                                 data = kmdat,
+                                 !!! curve_args,
+                                 linewidth = 0.5,
+                                 color="black",
+                                 inherit.aes=FALSE,
+                                 .homonyms = "first")
+
+  # cens_args <- rlang::dots_list(ggplot2::aes(x = kmdat$time, y = kmdat$surv, colour = kmdat$treatment, group = interaction(kmdat$refstudy, kmdat$treatment)),
+  #                               data = dplyr::filter(kmdat, .data$n.censor >= 1),
+  #                               !!! cens_args,
+  #                               stroke = 0.25, shape = 3,
+  #                               .homonyms = "first")
+
+  # Output ggplot geoms
+  list(do.call(ggplot2::geom_step, args = curve_args))#, do.call(ggplot2::geom_point, args = cens_args))
+}
+
+
+
+
+
+
+#' Plots survival predictions for each study as baseline for comparison with Kaplan-Meier
+#'
+#' Can be used to assess model fit
+#'
+#' @inheritParams hrcalc
+#' @inheritParams plot.surv.predicts
+#'
+#' @export
+studykm_survplot <- function(jagsmod,
+                             #times=seq(1,60, length.out=100),
+                             plotinterval=TRUE
+                             ) {
+
+  quantity <- "S"
+  ipd <- attributes(jagsmod)$ipd
+
+  # Create data frame of survival predictions for each reference study
+  pb <- utils::txtProgressBar(min = 0,      # Minimum value of the progress bar
+                              max = dplyr::n_distinct(ipd$study), # Maximum value of the progress bar
+                              style = 3)   # Character used to create the bar
+
+  plot.df <- data.frame()
+  for (s in seq_along(unique(ipd$study))) {
+    study <- unique(ipd$study)[s]
+
+    surv <- survcalc(jagsmod, times=seq(1, max(ipd$time[ipd$study==study]), length.out = 100),
+                     refstudy=study)
+
+    # Only show survival predictions for treatments within study
+    subtrt <- unique(ipd$treatment[ipd$study==study])
+
+    surv <- surv$S %>%
+      subset(treatment %in% subtrt) %>%
+      dplyr::mutate(refstudy=study)
+
+    plot.df <- rbind(plot.df, surv)
+
+    setTxtProgressBar(pb, s)
+  }
+
+
+  ##### Create plot #####
+
+  jagsdat <- jagsmod$model$data()
+  trtnames <- attr(jagsmod, "trtnames")
+  plot.df$treatment <- factor(plot.df$treatment, labels=trtnames, levels=trtnames)
+  plot.df$refstudy <- factor(plot.df$refstudy)
+
+  # Define colours
+  cols <- RColorBrewer::brewer.pal(dplyr::n_distinct(trtnames), "Set1")
+
+  # Subset by treatments
+  capt <- paste0("Fractional polynomial; P1 = ", jagsdat$P1, ifelse(!is.null(jagsdat$P2), paste0(", P2 = ", jagsdat$P2), ""))
+
+  g <- ggplot2::ggplot(plot.df, ggplot2::aes(x=time, ymin=`97.5%`, ymax=`2.5%`, y=`50%`,
+                                            color=treatment, fill=treatment, linetype=treatment)) +
+    ggplot2::geom_line() +
+    ggplot2::facet_wrap(~refstudy) +
+    ggplot2::xlab("Time") + ggplot2::ylab(quantity) +
+    ggplot2::theme_bw() +
+    ggplot2::scale_fill_manual(name = "Treatment", values=cols) +
+    ggplot2::scale_color_manual(name = "Treatment", values=cols) +
+    ggplot2::scale_linetype_discrete(name = "Treatment") +
+    ggplot2::labs(caption=capt)
+
+  if (plotinterval) {
+    g <- g + ggplot2::geom_ribbon(alpha=0.3)
+  }
+
+  return(g)
+}
+
+
 
 
 

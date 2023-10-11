@@ -50,7 +50,7 @@ Proportional hazards can be assessed using log-log plots. We can plot these for 
 
 We can then plot the curves, done below using PFS data for the NS1 node. 
 
-```{r}
+```{r, test}
 # Load the data to use
 #df <- read.csv("Analysis/NS1/fracpoly/NS1 PFS IPD.csv")
 df <- NS1_PFS # (example here loads it from package to allow vignette to run)
@@ -263,3 +263,12 @@ As you can see, the model below (1st order fractional polynomial with power of -
 plot(surv, treats=c("PCT", "PPCT"), overlay.km = TRUE)
 ```
 
+
+You can also calculate survival predictions made using each study in the dataset as the baseline/reference treatment, and then compare these to Kaplan-Meier data from each study. This gives a good indication of model fit across all studies.
+
+```{r}
+g <- studykm_survplot(jagsmod) +
+  geom_km(anova$ipd)
+
+plot(g)
+```
