@@ -58,17 +58,17 @@ guyot.method <- function(time, survival, tint, rint,
     r <- r[t < max(x)]
     t <- t[t < max(x)]
   }
-  warn <- FALSE
-  for (i in 1:(length(x)-1)) {
-
-    if (x[i]==x[i+1]) {
-      warn <- TRUE
-      x[i+1] <- x[i+1]+0.0000001
-    }
-  }
-  if (warn==TRUE) {
-    warning("Adding 0.0000001 to identical time values in t")
-  }
+  # warn <- FALSE
+  # for (i in 1:(length(x)-1)) {
+  #
+  #   if (x[i]==x[i+1]) {
+  #     warn <- TRUE
+  #     x[i+1] <- x[i+1]+0.0000001
+  #   }
+  # }
+  # if (warn==TRUE) {
+  #   warning("Adding 0.0000001 to identical time values in t")
+  # }
 
   # Parameter names used by the script below
   t.S<-x; S<-y; n.risk<-r; t.risk<-t
