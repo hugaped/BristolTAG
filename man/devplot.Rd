@@ -4,7 +4,7 @@
 \alias{devplot}
 \title{Plot posterior means of residual deviance contributions}
 \usage{
-devplot(jagsmod1, jagsmod2 = NULL, vline = "study")
+devplot(jagsmod1, jagsmod2 = NULL, vline = "arm")
 }
 \arguments{
 \item{jagsmod1}{Object of class `rjags` that includes monitored `dev` nodes}

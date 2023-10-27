@@ -130,7 +130,7 @@ fp_data <- function(anova, trtnames) {
 #' likelihood and data used must be the same. Cannot be used to compare different datasets or likelihoods.
 #'
 #' @export
-devplot <- function(jagsmod1, jagsmod2=NULL, vline="study") {
+devplot <- function(jagsmod1, jagsmod2=NULL, vline="arm") {
 
   if (!"rjags" %in% class(jagsmod1)) {
     stop("jagsmod1 is not an object of class rjags")
@@ -141,8 +141,10 @@ devplot <- function(jagsmod1, jagsmod2=NULL, vline="study") {
 
   jagsdat <- jagsmod1$model$data()
 
+  studynames <- attributes(jagsmod1)$studynames
+
   dev.df <- data.frame(dev1=jagsmod1$BUGSoutput$mean$dev,
-                       study=jagsdat$s,
+                       study=factor(studynames[jagsdat$s]),
                        arm=jagsdat$a,
                        N=1:jagsdat$N)
 
@@ -187,14 +189,14 @@ devplot <- function(jagsmod1, jagsmod2=NULL, vline="study") {
     capt <- paste(capt, capt2, sep="\n")
 
     g <- ggplot2::ggplot(data=dev.df, ggplot2::aes(x=dev1, y=dev2)) +
-      ggplot2::geom_point() +
+      ggplot2::geom_point(aes(color=study, shape=study)) +
       ggplot2::xlab(paste("Residual deviance for jagsmod1", info1)) +
       ggplot2::ylab(paste("Residual deviance for jagsmod2", info2))
 
   } else {
 
     g <- ggplot2::ggplot(data=dev.df, ggplot2::aes(x=N, y=dev1)) +
-      ggplot2::geom_point() +
+      ggplot2::geom_point(aes(color=study, shape=study)) +
       ggplot2::geom_vline(xintercept=cuts, linetype="dashed") +
       ggplot2::ylab(paste("Residual deviance for jagsmod1", info1)) +
       ggplot2::xlab("Observation number")
@@ -424,7 +426,7 @@ plot.hazard.ratios <- function(hr, reftrt) {
   g <- ggplot2::ggplot(out.df, ggplot2::aes(x=time, ymin=`97.5%`, ymax=`2.5%`, y=`50%`,
                           color=trt1, fill=trt1, linetype=trt1)) +
     ggplot2::geom_line() +
-    ggplot2::geom_ribbon(alpha=0.3) +
+    ggplot2::geom_ribbon(alpha=0.3, color=NA) +
     ggplot2::xlab("Time") +
     ggplot2::ylab(ifelse(attributes(hr)$eform, "HR", "log-HR")) +
     ggplot2::theme_bw() +
@@ -500,7 +502,7 @@ survcalc <- function(jagsmod, refstudy, times=seq(1,60, length.out=100),
   dt <- diff(c(0,times))
 
   for (k in 1:jagsdat$nt) {
-    beta <- mu[mcmc.index,] + d[mcmc.index,k,]
+    beta <- mu[mcmc.index,] + (d[mcmc.index,k,] - d[mcmc.index,reftrt,])
 
     loghaz <- get_fp(x = times,
                      params = beta,
@@ -811,7 +813,10 @@ mcmc_sum <- function(mcmc) {
 #'   as the set of models to run.
 #' @param powers A sequence of fractional polynomial powers to run models for. Note that for 2nd order models
 #'   all combinations of powers will be run (i.e. lots of models - length(powers) permute 2).
-#' @param savefile A `.rds` file to which the generated object (a list of models) should be saved. Default (`NULL`) does not
+#' @param jagsfile The location of a JAGS model saved as a `.jags` file on which to run
+#' the sequence of fractional polynomial models. The default `NULL` uses a standard 1st
+#' or 2nd order (depending on the value of `polyorder`) fractional polynomial model.
+#' @param savefile The location of a `.rds` file to which the generated object (a list of models) should be saved. Default (`NULL`) does not
 #' save a file.
 #' @param overwrite Whether the file specified in `savefile` should be overwritten (`TRUE`), or simply appended (`FALSE`)
 #' @param ... Arguments to be sent to JAGS (e.g. `n.iter`)
@@ -822,7 +827,7 @@ mcmc_sum <- function(mcmc) {
 #'
 #' @export
 sequence_fpoly <- function(jagsdat, powers=c(-3,-2,-1,-0.5,0,0.5,1,2,3), polyorder=1,
-                           savefile=NULL, overwrite=TRUE,
+                           jagsfile=NULL, savefile=NULL, overwrite=TRUE,
                            inits=fp_geninits(ns=jagsdat$ns, nt=jagsdat$nt, polyorder=polyorder, seed=890421),
                            ...) {
 
@@ -854,41 +859,43 @@ sequence_fpoly <- function(jagsdat, powers=c(-3,-2,-1,-0.5,0,0.5,1,2,3), polyord
   if (polyorder==1) {
     for (p1 in seq_along(powers)) {
 
-      print(paste0("Running fractional polynomial P1=", powers[p1], ", model ", p1, "/", length(powers)))
-
-      # Set FP power
-      jagsdat$P1 <- powers[p1]
-
-
-      out <- tryCatch({
-        # Run JAGS model
-        jagsmod <- do.call(R2jags::jags, c(args, list(data = jagsdat,
-                                                      inits=inits,
-                                                      parameters.to.save=c("d", "mu", "dev", "totresdev"),
-                                                      model.file=system.file("JAGSmodels", "FE_1st_order_model.jags", package="BristolTAG")
-                                                      #model.file="inst/JAGSmodels/FE_1st_order_model.jags"
-        )))
-      },
-      error=function(cond) {
-        message(cond)
-        return(list(error=cond))
-      })
-
       modnam <- paste("FP", powers[p1], sep="_")
 
       if (modnam %in% names(modseq) & overwrite==FALSE) {
-        stop("Model run has the same FP powers as an existing model in the list, but overwrite==FALSE")
+        #stop("Model run has the same FP powers as an existing model in the list, but overwrite==FALSE")
+        print(paste0("Skipping fractional polynomial P1=", powers[p1], ", model ", p1, "/", length(powers)))
+      } else {
+        print(paste0("Running fractional polynomial P1=", powers[p1], ", model ", p1, "/", length(powers)))
+
+        # Set FP power
+        jagsdat$P1 <- powers[p1]
+
+
+        out <- tryCatch({
+          # Run JAGS model
+          jagsmod <- do.call(R2jags::jags, c(args, list(data = jagsdat,
+                                                        inits=inits,
+                                                        parameters.to.save=c("d", "mu", "dev", "totresdev"),
+                                                        model.file=system.file("JAGSmodels", "FE_1st_order_model.jags", package="BristolTAG")
+                                                        #model.file="inst/JAGSmodels/FE_1st_order_model.jags"
+          )))
+        },
+        error=function(cond) {
+          message(cond)
+          return(list(error=cond))
+        })
+
+        attr(out, "trtnames") <- attr(jagsdat, "trtnames")
+        attr(out, "studynames") <- attr(jagsdat, "studynames")
+        attr(out, "ipd") <- attr(jagsdat, "ipd")
+        modseq[[modnam]] <- out
+
+        if (!is.null(savefile)) {
+          saveRDS(modseq, file=savefile)
+        }
+      }
       }
 
-      attr(out, "trtnames") <- attr(jagsdat, "trtnames")
-      attr(out, "studynames") <- attr(jagsdat, "studynames")
-      attr(out, "ipd") <- attr(jagsdat, "ipd")
-      modseq[[modnam]] <- out
-
-      if (!is.null(savefile)) {
-        saveRDS(modseq, file=savefile)
-      }
-    }
 
     # 2nd order FP
   } else if (polyorder==2) {
@@ -899,41 +906,46 @@ sequence_fpoly <- function(jagsdat, powers=c(-3,-2,-1,-0.5,0,0.5,1,2,3), polyord
         # Calculate permutations of powers
         perm <- factorial(length(powers)) / factorial(length(powers)-2)
 
-        print(paste0("Running fractional polynomial P1=", powers[p1], ", P2=", powers[p2],
-                     ", model ", count, "/", perm))
-        count <- count + 1
-
-        # Set FP power
-        jagsdat$P1 <- powers[p1]
-        jagsdat$P2 <- powers[p2]
-
-
-        out <- tryCatch({
-          # Run JAGS model
-          jagsmod <- do.call(R2jags::jags, c(args, list(data = jagsdat,
-                                                        inits=inits,
-                                                        parameters.to.save=c("d", "mu", "dev", "totresdev"),
-                                                        model.file=system.file("JAGSmodels", "FE_2nd_order_model.jags", package="BristolTAG")
-          )))
-        },
-        error=function(cond) {
-          message(cond)
-          return(list(error=cond))
-        })
-
+        # Check model name
         modnam <- paste("FP", powers[p1], powers[p2], sep="_")
 
         if (modnam %in% names(modseq) & overwrite==FALSE) {
-          stop("Model run has the same FP powers as an existing model in the list, but overwrite==FALSE")
-        }
+          #stop("Model run has the same FP powers as an existing model in the list, but overwrite==FALSE")
+          print(paste0("Skipping fractional polynomial P1=", powers[p1], ", P2=", powers[p2],
+                       ", model ", count, "/", perm))
+          count <- count + 1
 
-        attr(out, "trtnames") <- attr(jagsdat, "trtnames")
-        attr(out, "studynames") <- attr(jagsdat, "studynames")
-        attr(out, "ipd") <- attr(jagsdat, "ipd")
-        modseq[[modnam]] <- out
+        } else {
+          print(paste0("Running fractional polynomial P1=", powers[p1], ", P2=", powers[p2],
+                       ", model ", count, "/", perm))
+          count <- count + 1
 
-        if (!is.null(savefile) & !("error" %in% names(out))) {
-          saveRDS(modseq, file=savefile)
+          # Set FP power
+          jagsdat$P1 <- powers[p1]
+          jagsdat$P2 <- powers[p2]
+
+
+          out <- tryCatch({
+            # Run JAGS model
+            jagsmod <- do.call(R2jags::jags, c(args, list(data = jagsdat,
+                                                          inits=inits,
+                                                          parameters.to.save=c("d", "mu", "dev", "totresdev"),
+                                                          model.file=system.file("JAGSmodels", "FE_2nd_order_model.jags", package="BristolTAG")
+            )))
+          },
+          error=function(cond) {
+            message(cond)
+            return(list(error=cond))
+          })
+
+          attr(out, "trtnames") <- attr(jagsdat, "trtnames")
+          attr(out, "studynames") <- attr(jagsdat, "studynames")
+          attr(out, "ipd") <- attr(jagsdat, "ipd")
+          modseq[[modnam]] <- out
+
+          if (!is.null(savefile) & !("error" %in% names(out))) {
+            saveRDS(modseq, file=savefile)
+          }
         }
       }
     }
