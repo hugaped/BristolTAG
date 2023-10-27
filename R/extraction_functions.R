@@ -50,11 +50,26 @@ guyot.method <- function(time, survival, tint, rint,
   if(min(t) > 0) {
     warning("Number at risk at time 0 is needed. The calculation might not work correctly otherwise.")
   }
+  if (length(t)!=length(r)) {
+   stop("length(tint) should equal length(rint)")
+  }
   if(max(t) > max(x)) {
     warning("Times for number at risk (t) where t > x (x = coordinates of the curve) are not used.")
     r <- r[t < max(x)]
     t <- t[t < max(x)]
   }
+  warn <- FALSE
+  for (i in 1:(length(x)-1)) {
+
+    if (x[i]==x[i+1]) {
+      warn <- TRUE
+      x[i+1] <- x[i+1]+0.0000001
+    }
+  }
+  if (warn==TRUE) {
+    warning("Adding 0.0000001 to identical time values in t")
+  }
+
   # Parameter names used by the script below
   t.S<-x; S<-y; n.risk<-r; t.risk<-t
 
@@ -76,10 +91,15 @@ guyot.method <- function(time, survival, tint, rint,
   if (n.int > 1){
     #Time intervals 1,...,(n.int-1)
     for (i in 1:(n.int-1)){
+    #for (i in 1:16){
       #First approximation of no. censored on interval i
       n.censor[i]<- round(n.risk[i]*S[lower[i+1]]/S[lower[i]]- n.risk[i+1])
       #Adjust tot. no. censored until n.hat = n.risk at start of interval (i+1)
       while((n.hat[lower[i+1]]>n.risk[i+1])||((n.hat[lower[i+1]]<n.risk[i+1])&&(n.censor[i]>0))){
+        # if ((n.hat[lower[i+1]]>n.risk[i+1])==FALSE) {
+        #   stop("ME")
+        # }
+
         if (n.censor[i]<=0){
           cen[lower[i]:upper[i]]<-0
           n.censor[i]<-0
@@ -97,7 +117,12 @@ guyot.method <- function(time, survival, tint, rint,
         #Find no. events and no. at risk on each interval to agree with K-M estimates read from curves
         n.hat[lower[i]]<-n.risk[i]
         last<-last.i[i]
-        for (k in lower[i]:upper[i]){
+
+
+        temp.low <- min(c(lower[i], upper[i]))
+        temp.high <- max(c(lower[i], upper[i]))
+        for (k in temp.low:temp.high){
+        #for (k in lower[i]:upper[i]){
           if (i==1 & k==lower[i]){
             d[k]<-0
             KM.hat[k]<-1
@@ -111,7 +136,9 @@ guyot.method <- function(time, survival, tint, rint,
         }
         n.censor[i]<- n.censor[i]+(n.hat[lower[i+1]]-n.risk[i+1])
       }
-      if (n.hat[lower[i+1]]<n.risk[i+1]) n.risk[i+1]<-n.hat[lower[i+1]]
+      if (n.hat[lower[i+1]]<n.risk[i+1]) {
+        n.risk[i+1]<-n.hat[lower[i+1]]
+        }
       last.i[(i+1)]<-last
     }
   }
