@@ -1,4 +1,4 @@
-#Fixed effects 1st order fractional polynomial model (e.g. Weibull (P1=0) and Gompertz (P1=1))
+#Fixed effects 2nd order fractional polynomial model (e.g. Weibull (P1=0) and Gompertz (P1=1))
 model{                         	  # *** PROGRAM STARTS
 for (j in 1:N){   							   # LOOP THROUGH EVENTS
 
