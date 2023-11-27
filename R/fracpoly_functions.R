@@ -876,7 +876,7 @@ sequence_fpoly <- function(jagsdat, powers=c(-3,-2,-1,-0.5,0,0.5,1,2,3), polyord
           jagsmod <- do.call(R2jags::jags, c(args, list(data = jagsdat,
                                                         inits=inits,
                                                         parameters.to.save=c("d", "mu", "dev", "totresdev"),
-                                                        model.file=system.file("JAGSmodels", "FE_1st_order_model.jags", package="BristolTAG")
+                                                        model.file=ifelse(!is.null(jagsfile), jagsfile, system.file("JAGSmodels", "FE_1st_order_model.jags", package="BristolTAG"))
                                                         #model.file="inst/JAGSmodels/FE_1st_order_model.jags"
           )))
         },
@@ -930,7 +930,7 @@ sequence_fpoly <- function(jagsdat, powers=c(-3,-2,-1,-0.5,0,0.5,1,2,3), polyord
             jagsmod <- do.call(R2jags::jags, c(args, list(data = jagsdat,
                                                           inits=inits,
                                                           parameters.to.save=c("d", "mu", "dev", "totresdev"),
-                                                          model.file=system.file("JAGSmodels", "FE_2nd_order_model.jags", package="BristolTAG")
+                                                          model.file=ifelse(!is.null(jagsfile), jagsfile, system.file("JAGSmodels", "FE_2nd_order_model.jags", package="BristolTAG"))
             )))
           },
           error=function(cond) {
