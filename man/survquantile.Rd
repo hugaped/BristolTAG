@@ -4,7 +4,13 @@
 \alias{survquantile}
 \title{Estimate survival quantiles (e.g. median survival)}
 \usage{
-survquantile(jagsmod, refstudy, quantile = c(0.5), n.mcmc = NULL)
+survquantile(
+  jagsmod,
+  refstudy,
+  quantile = c(0.5),
+  n.mcmc = NULL,
+  interval = c(0.1, 300)
+)
 }
 \arguments{
 \item{jagsmod}{an object of class `"rjags"` that contains the results of a

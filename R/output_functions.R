@@ -82,7 +82,8 @@ output_coda_fp <- function(jagsmod, format="mvn", refstudy="KEYNOTE189",
 #' @param quantiles
 #'
 #' @export
-survquantile <- function(jagsmod, refstudy, quantile=c(0.5), n.mcmc=NULL) {
+survquantile <- function(jagsmod, refstudy, quantile=c(0.5), n.mcmc=NULL,
+                         interval=c(0.1, 300)) {
 
   trtnames <- attr(jagsmod, "trtnames")
 
@@ -135,8 +136,9 @@ survquantile <- function(jagsmod, refstudy, quantile=c(0.5), n.mcmc=NULL) {
     outlist[[trtnames[k]]] <- apply(beta, MARGIN=1,
                                     FUN=function(x) {
                                       survquant_chunk(params=x,
-                                                      exponents=-1,
-                                                      quantile=quantile)
+                                                      exponents=exponents,
+                                                      quantile=quantile,
+                                                      interval=interval)
                                     })
   }
   class(outlist) <- "survquantile"
