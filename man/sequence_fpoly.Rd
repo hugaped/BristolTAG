@@ -8,8 +8,10 @@ sequence_fpoly(
   jagsdat,
   powers = c(-3, -2, -1, -0.5, 0, 0.5, 1, 2, 3),
   polyorder = 1,
+  jagsfile = NULL,
   savefile = NULL,
   overwrite = TRUE,
+  parameters.to.save = c("d", "mu", "dev", "totresdev"),
   inits = fp_geninits(ns = jagsdat$ns, nt = jagsdat$nt, polyorder = polyorder, seed =
     890421),
   ...
@@ -23,7 +25,11 @@ as the set of models to run.}
 \item{powers}{A sequence of fractional polynomial powers to run models for. Note that for 2nd order models
 all combinations of powers will be run (i.e. lots of models - length(powers) permute 2).}
 
-\item{savefile}{A `.rds` file to which the generated object (a list of models) should be saved. Default (`NULL`) does not
+\item{jagsfile}{The location of a JAGS model saved as a `.jags` file on which to run
+the sequence of fractional polynomial models. The default `NULL` uses a standard 1st
+or 2nd order (depending on the value of `polyorder`) fractional polynomial model.}
+
+\item{savefile}{The location of a `.rds` file to which the generated object (a list of models) should be saved. Default (`NULL`) does not
 save a file.}
 
 \item{overwrite}{Whether the file specified in `savefile` should be overwritten (`TRUE`), or simply appended (`FALSE`)}

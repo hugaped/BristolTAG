@@ -2,6 +2,7 @@
 
 S3method(plot,hazard.ratios)
 S3method(plot,surv.predicts)
+S3method(print,survquantile)
 S3method(summary,sequence.fpoly)
 export(anova_data)
 export(auc)
@@ -20,4 +21,5 @@ export(sequence_fpoly)
 export(studykm_survplot)
 export(sub.ipd.guyot)
 export(survcalc)
+export(survquantile)
 importFrom(magrittr,"%>%")

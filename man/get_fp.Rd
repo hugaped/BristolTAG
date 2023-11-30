@@ -2,7 +2,7 @@
 % Please edit documentation in R/fracpoly_functions.R
 \name{get_fp}
 \alias{get_fp}
-\title{First order fractional polynomial}
+\title{Get fractional polynomial parameters}
 \usage{
 get_fp(x, params, exponents, sums = NULL)
 }
@@ -19,7 +19,7 @@ is evaluated for each row.}
 A matrix with length(x) rows giving the FP values or FP summaries.
 }
 \description{
-First order fractional polynomial
+Get fractional polynomial parameters
 }
 \details{
 Function copied and edited from gemtcPlus (https://github.com/Roche/gemtcPlus/tree/main)
