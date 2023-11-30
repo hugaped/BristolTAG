@@ -1112,7 +1112,7 @@ loglog_plot <- function(df) {
 
 
 
-#' First order fractional polynomial
+#' Get fractional polynomial parameters
 #'
 #' @param x A vector with the dependent variable (time).
 #' @param params A matrix with 2-3 columns (depending on the fractional polynomial order)
