@@ -828,6 +828,7 @@ mcmc_sum <- function(mcmc) {
 #' @export
 sequence_fpoly <- function(jagsdat, powers=c(-3,-2,-1,-0.5,0,0.5,1,2,3), polyorder=1,
                            jagsfile=NULL, savefile=NULL, overwrite=TRUE,
+                           parameters.to.save=c("d", "mu", "dev", "totresdev"),
                            inits=fp_geninits(ns=jagsdat$ns, nt=jagsdat$nt, polyorder=polyorder, seed=890421),
                            ...) {
 
@@ -875,7 +876,7 @@ sequence_fpoly <- function(jagsdat, powers=c(-3,-2,-1,-0.5,0,0.5,1,2,3), polyord
           # Run JAGS model
           jagsmod <- do.call(R2jags::jags, c(args, list(data = jagsdat,
                                                         inits=inits,
-                                                        parameters.to.save=c("d", "mu", "dev", "totresdev"),
+                                                        parameters.to.save=parameters.to.save,
                                                         model.file=ifelse(!is.null(jagsfile), jagsfile, system.file("JAGSmodels", "FE_1st_order_model.jags", package="BristolTAG"))
                                                         #model.file="inst/JAGSmodels/FE_1st_order_model.jags"
           )))
@@ -929,7 +930,7 @@ sequence_fpoly <- function(jagsdat, powers=c(-3,-2,-1,-0.5,0,0.5,1,2,3), polyord
             # Run JAGS model
             jagsmod <- do.call(R2jags::jags, c(args, list(data = jagsdat,
                                                           inits=inits,
-                                                          parameters.to.save=c("d", "mu", "dev", "totresdev"),
+                                                          parameters.to.save=parameters.to.save,
                                                           model.file=ifelse(!is.null(jagsfile), jagsfile, system.file("JAGSmodels", "FE_2nd_order_model.jags", package="BristolTAG"))
             )))
           },
@@ -987,7 +988,7 @@ summary.sequence.fpoly <- function(object, rhat=1.05, ...) {
 
     # If a model threw an error
     if ("error" %in% names(object[[mod]])) {
-      out.df <- out.df %>% add_row(model=names(object)[mod],
+      out.df <- out.df %>% dplyr::add_row(model=names(object)[mod],
                                    totresdev=NA,
                                    pv=NA,
                                    DIC=NA,
@@ -1000,7 +1001,7 @@ summary.sequence.fpoly <- function(object, rhat=1.05, ...) {
       ind <- append(ind, grep("mu\\[", rownames(object[[mod]]$BUGSoutput$summary)))
       con <- all(object[[mod]]$BUGSoutput$summary[ind, "Rhat"]<rhat)
 
-      out.df <- out.df %>% add_row(model=names(object)[mod],
+      out.df <- out.df %>% dplyr::add_row(model=names(object)[mod],
                                    totresdev=round(mean(object[[mod]]$BUGSoutput$mean$totresdev),2),
                                    pv=round(object[[mod]]$BUGSoutput$pD,2),
                                    DIC=round(object[[mod]]$BUGSoutput$DIC,2),
