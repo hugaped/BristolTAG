@@ -79,13 +79,19 @@ output_coda_fp <- function(jagsmod, format="mvn", refstudy="KEYNOTE189",
 #' Estimate survival quantiles (e.g. median survival)
 #'
 #' @inheritParams survcalc
-#' @param quantiles
+#' @param quantile A quantile (between 0 and 1) at which to estimate the survival
+#' time - e.g. for median survival `quantile=0.5`
+#' @param treatments A character vector of treatments names for which to estimate
+#' survival quantiles
+#' @param interval Two numbers representing the limits over which to evaluate the
+#' solver that calculates the survival quantile. Note that this **must** be wide
+#' enough to allow for all MCMC survival quantiles or the function will throw
+#' an error. However, a more narrow interval will speed up the solver.
 #'
 #' @export
-survquantile <- function(jagsmod, refstudy, quantile=c(0.5), n.mcmc=NULL,
-                         interval=c(0.1, 300)) {
-
-  trtnames <- attr(jagsmod, "trtnames")
+survquantile <- function(jagsmod, refstudy, quantile=0.5, n.mcmc=NULL,
+                         interval=c(0.1, 300),
+                         treatments=attr(jagsmod, "trtnames")) {
 
   if (!"rjags" %in% class(jagsmod)) {
     stop("jagsmod must be an object of class rjags")
@@ -98,6 +104,12 @@ survquantile <- function(jagsmod, refstudy, quantile=c(0.5), n.mcmc=NULL,
   } else if (dim(jagsmod$BUGSoutput$sims.list$d)[3]==3) {
     polyorder <- 2
   }
+
+  # Check treatments are all in jagsmod
+  if (!all(treatments %in% attr(jagsmod, "trtnames"))) {
+    stop("Named 'treatments' do not match those in jagsmod")
+  }
+  trt.ind <- which(attr(jagsmod, "trtnames") %in% treatments)
 
   # Speeds up computation
   if (!is.null(n.mcmc)) {
@@ -130,10 +142,10 @@ survquantile <- function(jagsmod, refstudy, quantile=c(0.5), n.mcmc=NULL,
   }
 
   outlist <- list()
-  for (k in 1:jagsdat$nt) {
-    beta <- mu[mcmc.index,] + (d[mcmc.index,k,] - d[mcmc.index,reftrt,])
+  for (k in seq_along(trt.ind)) {
+    beta <- mu[mcmc.index,] + (d[mcmc.index,trt.ind[k],] - d[mcmc.index,reftrt,])
 
-    outlist[[trtnames[k]]] <- apply(beta, MARGIN=1,
+    outlist[[treatments[k]]] <- apply(beta, MARGIN=1,
                                     FUN=function(x) {
                                       survquant_chunk(params=x,
                                                       exponents=exponents,

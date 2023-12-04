@@ -7,9 +7,10 @@
 survquantile(
   jagsmod,
   refstudy,
-  quantile = c(0.5),
+  quantile = 0.5,
   n.mcmc = NULL,
-  interval = c(0.1, 300)
+  interval = c(0.1, 300),
+  treatments = attr(jagsmod, "trtnames")
 )
 }
 \arguments{
@@ -18,11 +19,15 @@ fractional polynomial model.}
 
 \item{refstudy}{Name of the study to use as reference when making predictions. Must match a name in `attr(jagsmod, "studynames")`}
 
+\item{quantile}{A quantile (between 0 and 1) at which to estimate the survival
+time - e.g. for median survival `quantile=0.5`}
+
 \item{n.mcmc}{integer to indicate the number of MCMC samples to draw (without replacement). Note that sampling
 is random (though is the same across parameters to preserve within-sample correlation). Speeds up computation,
 though will result in higher MCMC error.}
 
-\item{quantiles}{}
+\item{treatments}{A character vector of treatments names for which to estimate
+survival quantiles}
 }
 \description{
 Estimate survival quantiles (e.g. median survival)
