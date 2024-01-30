@@ -4,16 +4,19 @@
 \alias{combine.ipd.guyot}
 \title{Combines digitised IPD}
 \usage{
-combine.ipd.guyot(x, y)
+combine.ipd.guyot(x, y, class = "ipd.guyot")
 }
 \arguments{
-\item{x}{An object of class `"ipd.guyot"` generated from digitised IPD}
+\item{x}{An object of class `"ipd.guyot"` or `"data.frame"` generated from digitised IPD}
 
-\item{y}{An object of class `"ipd.guyot"` generated from digitised IPD}
+\item{y}{An object of class `"ipd.guyot"` or `"data.frame"` generated from digitised IPD}
+
+\item{class}{Can take either `"ipd.guyot"` or `"data.frame"` depending on the
+class of `x` and `y`. In future this should just take `"data.frame"`}
 }
 \value{
-Returns a list containing a data frame of IPD that combines data from `x$patient` and
-`y$patient`
+Returns a list containing a data frame or a data frame (depending on `class`)
+of IPD that combines data from `x` and `y`
 }
 \description{
 Combines digitised IPD

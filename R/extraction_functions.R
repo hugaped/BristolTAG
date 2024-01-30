@@ -268,42 +268,52 @@ guyot.method <- function(time, survival, tint, rint,
 
 #' Take a subset of digitised IPD
 #'
-#' @param x An object of class `"ipd.guyot"` generated from digitised IPD containing
+#' @param x An object of class `"ipd.guyot"` or `"data.frame"` (as defined in `class`)
+#' generated from digitised IPD containing
 #' the larger set of IPD
-#' @param y An object of class `"ipd.guyot"` generated from digitised IPD that should be
-#' removed from `x`
+#' @param y An object of class `"ipd.guyot"` or `"data.frame"` (as defined in `class`)
+#' generated from digitised IPD that should be removed from `x`
+#' @param class Can take either `"ipd.guyot"` or `"data.frame"` depending on the
+#' class of `x` and `y`. In future this should just take `"data.frame"`
 #'
 #' @details
 #' Note that `x` must include patients in `y`. The function then removes IPD patients specified in `y`
 #' from IPD in `x` using nearest-neighbour.
 #'
 #' @export
-sub.ipd.guyot <- function(x, y) {
+sub.ipd.guyot <- function(x, y, class="ipd.guyot") {
 
-  if (nrow(x$patient)<nrow(y$patient)) {
+  if (class %in% c("ipd.guyot")) {
+    x <- x$patient
+    y <- y$patient
+  }
+
+  if (nrow(x)<nrow(y)) {
     stop("y is larger than x - y must be a subset of x")
   }
 
-  out <- x$patient
+  out <- x
 
-  for (i in seq_along(y$patient[,1])) {
+  for (i in seq_along(y[,1])) {
     # Subset for event
-    sub <- out[out$event==y$patient$event[i],]
+    sub <- out[out$event==y$event[i],]
 
-    sub$tdif <- abs(sub$time - y$patient$time[i])
+    sub$tdif <- abs(sub$time - y$time[i])
     sub <- arrange(sub, tdif)
 
     tmatch <- sub$time[1]
 
-    drop <- which(out$time==tmatch & out$event==y$patient$event[i])
+    drop <- which(out$time==tmatch & out$event==y$event[i])
 
     #print(tmatch)
 
     out <- out[-drop[1],]
   }
 
-  out <- list(patient=out)
-  class(out) <- "ipd.guyot"
+  if (class %in% "ipd.guyot") {
+    out <- list(patient=out)
+    class(out) <- "ipd.guyot"
+  }
 
   return(out)
 }
@@ -312,20 +322,28 @@ sub.ipd.guyot <- function(x, y) {
 
 #' Combines digitised IPD
 #'
-#' @param x An object of class `"ipd.guyot"` generated from digitised IPD
-#' @param y An object of class `"ipd.guyot"` generated from digitised IPD
+#' @param x An object of class `"ipd.guyot"` or `"data.frame"` generated from digitised IPD
+#' @param y An object of class `"ipd.guyot"` or `"data.frame"` generated from digitised IPD
+#' @inheritParams sub.ipd.guyot
 #'
-#' @return Returns a list containing a data frame of IPD that combines data from `x$patient` and
-#' `y$patient`
+#' @return Returns a list containing a data frame or a data frame (depending on `class`)
+#' of IPD that combines data from `x` and `y`
 #'
 #' @export
-combine.ipd.guyot <- function(x, y) {
+combine.ipd.guyot <- function(x, y, class="ipd.guyot") {
+
+  if (class %in% "ipd.guyot") {
+    x <- x$patient
+    y <- y$patient
+  }
 
   # Combining the patient data frame
-  pat <- arrange(rbind(x$patient, y$patient), time, desc(event))
+  out <- arrange(rbind(x, y), time, desc(event))
 
-  out <- list("patient"=pat)
-  class(out) <- "ipd.guyot"
+  if (class %in% "ipd.guyot") {
+    out <- list("patient"=out)
+    class(out) <- "ipd.guyot"
+  }
 
   return(out)
 }

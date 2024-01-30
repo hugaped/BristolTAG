@@ -12,10 +12,14 @@
 #' distribution, or `"coda"` for a full set of MCMC samples (given as a matrix)
 #' @param params A vector of parameter names corresponding to those in the model
 #' to extract values for.
+#' @param refstudy Name of the study to use as reference when making predictions.
+#' `refstudy` must either match a name in `attr(jagsmod, "studynames")` or can be
+#' left as `NULL` (the default) for parameters for the reference curve not to be
+#' included in the coda.
 #'
 #'
 #' @export
-output_coda_fp <- function(jagsmod, format="mvn", refstudy="KEYNOTE189",
+output_coda_fp <- function(jagsmod, format="mvn", refstudy=NULL,
                            treatments=attr(jagsmod, "trtnames")) {
   if (!"rjags" %in% class(jagsmod)) {
     stop("jagsmod must be an object of class rjags")
@@ -26,14 +30,17 @@ output_coda_fp <- function(jagsmod, format="mvn", refstudy="KEYNOTE189",
   trtnames <- attr(jagsmod, "trtnames")
   studynames <- attr(jagsmod, "studynames")
 
-  mu <- sims.list$mu[,which(studynames %in% refstudy),]
+  if (!is.null(refstudy)) {
+    mu <- sims.list$mu[,which(studynames %in% refstudy),]
+
+    # Get correct parameter estimates into matrix form
+    mu <- apply(mu, MARGIN=2, cbind)
+  }
+
   d <- sims.list$d
 
-  # Get correct parameter estimates into matrix form
-  mu <- apply(mu, MARGIN=2, cbind)
-
   # Loop over FP parameters
-  dmat <- matrix(nrow=nrow(mu))
+  dmat <- matrix(nrow=dim(d)[1])
   cols <- vector()
   for (i in 1:dim(d)[3]) {
     dmat <- cbind(dmat, apply(d[,which(trtnames %in% treatments),i], MARGIN=2, cbind))
@@ -42,9 +49,13 @@ output_coda_fp <- function(jagsmod, format="mvn", refstudy="KEYNOTE189",
   dmat <- dmat[,-1]
 
   colnames(dmat) <- cols
-  colnames(mu) <- paste(refstudy, 1:ncol(mu), sep="_")
 
-  outmat <- cbind(mu, dmat)
+  if (!is.null(refstudy)) {
+    colnames(mu) <- paste(refstudy, 1:ncol(mu), sep="_")
+    outmat <- cbind(mu, dmat)
+  } else {
+    outmat <- dmat
+  }
 
   if (format=="mvn") {
 
@@ -57,8 +68,13 @@ output_coda_fp <- function(jagsmod, format="mvn", refstudy="KEYNOTE189",
     # Param names
     temp <- paste0("d[", which(trtnames %in% treatments), ",")
     temp <- as.vector(t(sapply(temp, FUN=function(x) {paste0(x, 1:dim(d)[3], "]")})))
-    param.symbol <- c(paste0("mu[", which(studynames %in% refstudy), ",", 1:ncol(mu), "]"),
-                      temp)
+
+    if (!is.null(refstudy)) {
+      param.symbol <- c(paste0("mu[", which(studynames %in% refstudy), ",", 1:ncol(mu), "]"),
+                        temp)
+    } else {
+      param.symbol <- temp
+    }
 
     out <- list(mean=param.means, covar=param.covar, params=param.symbol)
 
@@ -89,12 +105,16 @@ output_coda_fp <- function(jagsmod, format="mvn", refstudy="KEYNOTE189",
 #' an error. However, a more narrow interval will speed up the solver.
 #'
 #' @export
-survquantile <- function(jagsmod, refstudy, quantile=0.5, n.mcmc=NULL,
+survquantile <- function(jagsmod, refstudy, refmod=jagsmod,
+                         quantile=0.5, n.mcmc=NULL,
                          interval=c(0.1, 300),
                          treatments=attr(jagsmod, "trtnames")) {
 
   if (!"rjags" %in% class(jagsmod)) {
     stop("jagsmod must be an object of class rjags")
+  }
+  if (!"rjags" %in% class(refmod)) {
+    stop("refmod must be an object of class rjags")
   }
   if (!all(c("d", "mu") %in% jagsmod$parameters.to.save)) {
     stop("d and mu must be monitored in jagsmod")
@@ -105,6 +125,9 @@ survquantile <- function(jagsmod, refstudy, quantile=0.5, n.mcmc=NULL,
     polyorder <- 2
   }
 
+  jagsdat <- jagsmod$model$data()
+  sims.list <- jagsmod$BUGSoutput$sims.list
+
   # Check treatments are all in jagsmod
   if (!all(treatments %in% attr(jagsmod, "trtnames"))) {
     stop("Named 'treatments' do not match those in jagsmod")
@@ -112,19 +135,50 @@ survquantile <- function(jagsmod, refstudy, quantile=0.5, n.mcmc=NULL,
   trt.ind <- which(attr(jagsmod, "trtnames") %in% treatments)
 
   # Speeds up computation
+  # And ensures the largest MCMC object samples are fully used
   if (!is.null(n.mcmc)) {
     mcmc.index <- sample(1:jagsmod$BUGSoutput$n.sims, size=n.mcmc)
     matsize <- n.mcmc
+
+    mcmc.index.jags <- mcmc.index
+    mcmc.index.ref <- mcmc.index
+
   } else {
-    mcmc.index <- 1:jagsmod$BUGSoutput$n.sims
-    matsize <- jagsmod$BUGSoutput$n.sims
+    mcmc.index.jags <- 1:jagsmod$BUGSoutput$n.sims
+    mcmc.index.ref <- 1:refmod$BUGSoutput$n.sims
+
+    if (jagsmod$BUGSoutput$n.sims > refmod$BUGSoutput$n.sims) {
+      mcmc.index.ref <- c(mcmc.index.ref,
+                          sample(1:refmod$BUGSoutput$n.sims,
+                                 size=jagsmod$BUGSoutput$n.sims - refmod$BUGSoutput$n.sims)
+      )
+      matsize <- jagsmod$BUGSoutput$n.sims
+    } else if (jagsmod$BUGSoutput$n.sims < refmod$BUGSoutput$n.sims) {
+      mcmc.index.jags <- c(mcmc.index.jags,
+                           sample(1:jagsmod$BUGSoutput$n.sims,
+                                  size=refmod$BUGSoutput$n.sims - jagsmod$BUGSoutput$n.sims)
+      )
+      matsize <- refmod$BUGSoutput$n.sims
+    } else {
+      matsize <- jagsmod$BUGSoutput$n.sims
+    }
+    n.sims <- max(jagsmod$BUGSoutput$n.sims, refmod$BUGSoutput$n.sims)
   }
 
-  jagsdat <- jagsmod$model$data()
-  sims.list <- jagsmod$BUGSoutput$sims.list
+  # Get index of reference study
+  if (!identical(jagsmod, refmod)) {
+    message("Model for reference curve is different to the treatment effect model")
+  }
 
   # Get index of reference study
-  refstudy.ind <- which(attr(jagsmod, "studynames") %in% refstudy)
+  refstudy.ind <- which(attr(refmod, "studynames") %in% refstudy)
+  if (length(refstudy.ind)==0) {
+    if (dim(refmod$BUGSoutput$sims.list$mu)[2]==1) {
+      refstudy.ind <- 1
+    } else {
+      stop("refstudy is not a named study in attr(refmod, 'studynames')")
+    }
+  }
 
   reftrt <- jagsdat$t[refstudy.ind,1]
 
@@ -133,7 +187,7 @@ survquantile <- function(jagsmod, refstudy, quantile=0.5, n.mcmc=NULL,
   mort.df <- data.frame()
   S.df <- data.frame()
 
-  mu <- sims.list$mu[, refstudy.ind, ]
+  mu <- refmod$BUGSoutput$sims.list$mu[, refstudy.ind, ]
   d  <- sims.list$d
 
   exponents <- jagsdat$P1
@@ -143,7 +197,8 @@ survquantile <- function(jagsmod, refstudy, quantile=0.5, n.mcmc=NULL,
 
   outlist <- list()
   for (k in seq_along(trt.ind)) {
-    beta <- mu[mcmc.index,] + (d[mcmc.index,trt.ind[k],] - d[mcmc.index,reftrt,])
+    beta <- mu[mcmc.index.ref,] +
+      (d[mcmc.index.jags,trt.ind[k],] - d[mcmc.index.jags,reftrt,])
 
     outlist[[treatments[k]]] <- apply(beta, MARGIN=1,
                                     FUN=function(x) {

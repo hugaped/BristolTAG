@@ -4,11 +4,25 @@
 \alias{studykm_survplot}
 \title{Plots survival predictions for each study as baseline for comparison with Kaplan-Meier}
 \usage{
-studykm_survplot(jagsmod, plotinterval = TRUE)
+studykm_survplot(
+  jagsmod,
+  studies = attr(jagsmod, "studynames"),
+  d.weights = NULL,
+  plotinterval = TRUE
+)
 }
 \arguments{
 \item{jagsmod}{an object of class `"rjags"` that contains the results of a
 fractional polynomial model.}
+
+\item{studies}{A character vector of study names. Must be a subset of
+`attr(jagsmod, "studynames")`.}
+
+\item{d.weights}{A numeric vector containing weightings (between 0 and 1)
+for each study to apply to treatment
+effects for a shared parameter model (e.g. separate treatment effects for
+histology). Default (`NULL`) is not to apply any weighting. Order of weights
+must correspond to the studies in `attr(jagsmod, "studynames")`}
 
 \item{plotinterval}{indicates whether to plot 95 percent CrI}
 }

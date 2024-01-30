@@ -7,6 +7,7 @@
 survquantile(
   jagsmod,
   refstudy,
+  refmod = jagsmod,
   quantile = 0.5,
   n.mcmc = NULL,
   interval = c(0.1, 300),
@@ -17,7 +18,15 @@ survquantile(
 \item{jagsmod}{an object of class `"rjags"` that contains the results of a
 fractional polynomial model.}
 
-\item{refstudy}{Name of the study to use as reference when making predictions. Must match a name in `attr(jagsmod, "studynames")`}
+\item{refstudy}{Name of the study to use as reference when making predictions. If
+`refmod=jagsmod` (the default) then `refstudy` must match a name
+in `attr(jagsmod, "studynames")`}
+
+\item{refmod}{An object of class `"rjags"` that contains a fractional polynomial
+model for the reference arm. `mu` parameters must be monitored, to which
+fractional polynomial relative effects (`d`) from `jagsmod` can be
+applied. The default is to use `jagsmod` as the reference model, in which case a
+choice of reference study must be specified using `refstudy`.}
 
 \item{quantile}{A quantile (between 0 and 1) at which to estimate the survival
 time - e.g. for median survival `quantile=0.5`}
@@ -25,6 +34,11 @@ time - e.g. for median survival `quantile=0.5`}
 \item{n.mcmc}{integer to indicate the number of MCMC samples to draw (without replacement). Note that sampling
 is random (though is the same across parameters to preserve within-sample correlation). Speeds up computation,
 though will result in higher MCMC error.}
+
+\item{interval}{Two numbers representing the limits over which to evaluate the
+solver that calculates the survival quantile. Note that this **must** be wide
+enough to allow for all MCMC survival quantiles or the function will throw
+an error. However, a more narrow interval will speed up the solver.}
 
 \item{treatments}{A character vector of treatments names for which to estimate
 survival quantiles}

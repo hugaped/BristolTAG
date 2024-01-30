@@ -7,7 +7,7 @@
 output_coda_fp(
   jagsmod,
   format = "mvn",
-  refstudy = "KEYNOTE189",
+  refstudy = NULL,
   treatments = attr(jagsmod, "trtnames")
 )
 }
@@ -17,6 +17,11 @@ fractional polynomial model.}
 
 \item{format}{Can take `"mvn"` to output parameters for multivariate normal
 distribution, or `"coda"` for a full set of MCMC samples (given as a matrix)}
+
+\item{refstudy}{Name of the study to use as reference when making predictions.
+`refstudy` must either match a name in `attr(jagsmod, "studynames")` or can be
+left as `NULL` (the default) for parameters for the reference curve not to be
+included in the coda.}
 
 \item{params}{A vector of parameter names corresponding to those in the model
 to extract values for.}

@@ -51,15 +51,26 @@ fp_data <- function(anova, trtnames) {
   #-----------------------------------------------------------------------------
 
   # Need to number the treatment arms within each trial
+  # data <- data %>%
+  #   dplyr::group_by(trialid, spgrp) %>%
+  #   dplyr::mutate(arm=seq(dplyr::n()))
   data <- data %>%
-    dplyr::group_by(trialid, spgrp) %>%
-    dplyr::mutate(arm=seq(dplyr::n()))
+    dplyr::group_by(trialid) %>%
+    dplyr::mutate(arm=dense_rank(txCode))
 
   # Drop uneven spgrp within a trial (test if removing makes a difference by using 1st bit of code)
-  data <- data %>%
-    dplyr::group_by(trialid, spgrp) %>%
-    dplyr::mutate(drop=dplyr::n()) %>%
-    subset(drop!=1)
+  # data <- data %>%
+  #   dplyr::group_by(trialid, spgrp) %>%
+  #   dplyr::mutate(drop=dplyr::n())
+
+  # if (any(data$drop==1)) {
+  #   warning("Dataset includes trials with only 1 arm")
+  # }
+
+  # data <- data %>%
+  #   dplyr::group_by(trialid, spgrp) %>%
+  #   dplyr::mutate(drop=dplyr::n()) %>%
+  #   subset(drop!=1)
 
   # data <- data %>%
   #   group_by(trialid, txCode, arm) %>%
@@ -67,9 +78,13 @@ fp_data <- function(anova, trtnames) {
   #   subset(drop!=1)
 
   # Maxarm
+  # data <- data %>%
+  #   dplyr::group_by(trialid, spgrp) %>%
+  #   dplyr::mutate(maxarm=dplyr::n()) %>%
+  #   dplyr::ungroup()
   data <- data %>%
-    dplyr::group_by(trialid, spgrp) %>%
-    dplyr::mutate(maxarm=dplyr::n()) %>%
+    dplyr::group_by(trialid) %>%
+    dplyr::mutate(maxarm=max(arm)) %>%
     dplyr::ungroup()
 
   # Check all arms coded
@@ -418,10 +433,12 @@ plot.hazard.ratios <- function(hr, reftrt) {
 
   out.df$trt1 <- factor(out.df$trt1, labels=trtnames, levels=trtnames)
 
-  cols <- RColorBrewer::brewer.pal(dplyr::n_distinct(out.df$trt1), "Set1")
+  # Ensure palette is sufficiently large
+  all.cols <- RColorBrewer::brewer.pal(9, "Set1")
+  all.cols <- c(all.cols, RColorBrewer::brewer.pal(4, "Set2"))
 
   out.df <- subset(out.df, trt2==reftrt)
-  cols <- cols[unique(as.numeric(out.df$trt1))]
+  cols <- all.cols[unique(as.numeric(out.df$trt1))]
 
   g <- ggplot2::ggplot(out.df, ggplot2::aes(x=time, ymin=`97.5%`, ymax=`2.5%`, y=`50%`,
                           color=trt1, fill=trt1, linetype=trt1)) +
@@ -448,41 +465,87 @@ plot.hazard.ratios <- function(hr, reftrt) {
 #' cumulative hazards (`"cumhaz"`) and hazards (`"haz"`).
 #'
 #' @inheritParams hrcalc
-#' @param refstudy Name of the study to use as reference when making predictions. Must match a name in `attr(jagsmod, "studynames")`
+#' @inheritParams weight_shared_d
+#' @param refstudy Name of the study to use as reference when making predictions. If
+#' `refmod=jagsmod` (the default) then `refstudy` must match a name
+#' in `attr(jagsmod, "studynames")`
+#' @param refmod An object of class `"rjags"` that contains a fractional polynomial
+#' model for the reference arm. `mu` parameters must be monitored, to which
+#' fractional polynomial relative effects (`d`) from `jagsmod` can be
+#' applied. The default is to use `jagsmod` as the reference model, in which case a
+#' choice of reference study must be specified using `refstudy`.
 #' @param n.mcmc integer to indicate the number of MCMC samples to draw (without replacement). Note that sampling
 #' is random (though is the same across parameters to preserve within-sample correlation). Speeds up computation,
 #' though will result in higher MCMC error.
 #'
 #' @export
-survcalc <- function(jagsmod, refstudy, times=seq(1,60, length.out=100),
-                     n.mcmc=NULL) {
+survcalc <- function(jagsmod, refstudy, refmod=jagsmod,
+                     times=seq(1,60, length.out=100),
+                     n.mcmc=NULL, d.weight=NULL) {
 
   if (!"rjags" %in% class(jagsmod)) {
     stop("jagsmod must be an object of class rjags")
   }
+  if (!"rjags" %in% class(refmod)) {
+    stop("refmod must be an object of class rjags")
+  }
   if (!all(c("d", "mu") %in% jagsmod$parameters.to.save)) {
     stop("d and mu must be monitored in jagsmod")
-  }
-  if (dim(jagsmod$BUGSoutput$sims.list$d)[3]==2) {
-    polyorder <- 1
-  } else if (dim(jagsmod$BUGSoutput$sims.list$d)[3]==3) {
-    polyorder <- 2
-  }
-
-  # Speeds up computation
-  if (!is.null(n.mcmc)) {
-    mcmc.index <- sample(1:jagsmod$BUGSoutput$n.sims, size=n.mcmc)
-    matsize <- n.mcmc
-  } else {
-    mcmc.index <- 1:jagsmod$BUGSoutput$n.sims
-    matsize <- jagsmod$BUGSoutput$n.sims
   }
 
   jagsdat <- jagsmod$model$data()
   sims.list <- jagsmod$BUGSoutput$sims.list
 
+  if (is.null(jagsdat$P2)) {
+    polyorder <- 1
+  } else {
+    polyorder <- 2
+  }
+
+  # Speeds up computation
+  # And ensures the largest MCMC object samples are fully used
+  if (!is.null(n.mcmc)) {
+    mcmc.index <- sample(1:jagsmod$BUGSoutput$n.sims, size=n.mcmc)
+    matsize <- n.mcmc
+
+    mcmc.index.jags <- mcmc.index
+    mcmc.index.ref <- mcmc.index
+
+  } else {
+    mcmc.index.jags <- 1:jagsmod$BUGSoutput$n.sims
+    mcmc.index.ref <- 1:refmod$BUGSoutput$n.sims
+
+    if (jagsmod$BUGSoutput$n.sims > refmod$BUGSoutput$n.sims) {
+      mcmc.index.ref <- c(mcmc.index.ref,
+                          sample(1:refmod$BUGSoutput$n.sims,
+                                 size=jagsmod$BUGSoutput$n.sims - refmod$BUGSoutput$n.sims)
+                          )
+      matsize <- jagsmod$BUGSoutput$n.sims
+    } else if (jagsmod$BUGSoutput$n.sims < refmod$BUGSoutput$n.sims) {
+      mcmc.index.jags <- c(mcmc.index.jags,
+                          sample(1:jagsmod$BUGSoutput$n.sims,
+                                 size=refmod$BUGSoutput$n.sims - jagsmod$BUGSoutput$n.sims)
+      )
+      matsize <- refmod$BUGSoutput$n.sims
+    } else {
+      matsize <- jagsmod$BUGSoutput$n.sims
+    }
+    n.sims <- max(jagsmod$BUGSoutput$n.sims, refmod$BUGSoutput$n.sims)
+  }
+
   # Get index of reference study
-  refstudy.ind <- which(attr(jagsmod, "studynames") %in% refstudy)
+  if (!identical(jagsmod, refmod)) {
+    message("Model for reference curve is different to the treatment effect model")
+  }
+
+  refstudy.ind <- which(attr(refmod, "studynames") %in% refstudy)
+  if (length(refstudy.ind)==0) {
+    if (dim(refmod$BUGSoutput$sims.list$mu)[2]==1) {
+      refstudy.ind <- 1
+    } else {
+      stop("refstudy is not a named study in attr(refmod, 'studynames')")
+    }
+  }
 
   reftrt <- jagsdat$t[refstudy.ind,1]
 
@@ -491,8 +554,13 @@ survcalc <- function(jagsmod, refstudy, times=seq(1,60, length.out=100),
   mort.df <- data.frame()
   S.df <- data.frame()
 
-  mu <- sims.list$mu[, refstudy.ind, ]
+  mu <- refmod$BUGSoutput$sims.list$mu[, refstudy.ind, ]
   d  <- sims.list$d
+
+  # Weight treatment effects
+  if (!is.null(d.weight)) {
+    d <- weight_shared_d(jagsmod, d.weight=d.weight)
+  }
 
   exponents <- jagsdat$P1
   if (!is.null(jagsdat$P2)) {
@@ -502,7 +570,9 @@ survcalc <- function(jagsmod, refstudy, times=seq(1,60, length.out=100),
   dt <- diff(c(0,times))
 
   for (k in 1:jagsdat$nt) {
-    beta <- mu[mcmc.index,] + (d[mcmc.index,k,] - d[mcmc.index,reftrt,])
+
+    beta <- mu[mcmc.index.ref,] +
+      (d[mcmc.index.jags,k,] - d[mcmc.index.jags,reftrt,])
 
     loghaz <- get_fp(x = times,
                      params = beta,
@@ -521,6 +591,13 @@ survcalc <- function(jagsmod, refstudy, times=seq(1,60, length.out=100),
     temp <- data.frame(time = times,
                        treatment = k,
                        S_sum)
+
+    # Add survival at time=0
+    # temp2 <- data.frame(time = 0,
+    #                     treatment = k,
+    #                     t(apply(matrix(1,nrow=1, ncol=1), MAR = 1, FUN = mcmc_sum)))
+    # temp <- rbind(temp2, temp)
+
     S.df <- rbind(S.df, temp)
 
     mort_sum <- t(apply(mort, MAR = 1, FUN = mcmc_sum))
@@ -566,6 +643,59 @@ survcalc <- function(jagsmod, refstudy, times=seq(1,60, length.out=100),
 
 
 
+
+
+#' Weight treatment effects in shared parameter model by proportion of population
+#'
+#' @inheritParams survcalc
+#' @param d.weight A numeric weighting (between 0 and 1) to apply to treatment
+#' effects for a shared parameter model (e.g. separate treatment effects for
+#' histology). Default (`NULL`) is not to apply any weighting.
+#'
+weight_shared_d <- function(jagsmod, d.weight) {
+
+  jagsdat <- jagsmod$model$data()
+  d <- jagsmod$BUGSoutput$sims.list$d
+
+  if (is.null(jagsdat$P2)) {
+    polyorder <- 1
+    if (dim(jagsmod$BUGSoutput$sims.list$d)[3]>2) {
+      if (is.null(d.weight)) {
+        warning("Dimensions of d indicate shared parameter model but d.weight is NULL")
+      }
+    }
+  } else {
+    polyorder <- 2
+    if (dim(jagsmod$BUGSoutput$sims.list$d)[3]>3) {
+      if (is.null(d.weight)) {
+        warning("Dimensions of d indicate shared parameter model but d.weight is NULL")
+      }
+    }
+  }
+
+  if (length(d.weight)>1) {
+    stop("d.weight must be length 1")
+  }
+
+  # Get parameter indices
+  dparams <- 1:dim(jagsmod$BUGSoutput$sims.list$d)[3]
+  wparams <- dparams[-c(1:(polyorder+1))]
+
+  # Apply weightings
+  for (param in seq_along(wparams)) {
+    d[,,param] <- (d[,,param] * (1-d.weight)) + (d[,,wparams[param]] * d.weight)
+  }
+
+  # Drop additional indices
+  d <- d[,,-wparams]
+
+  return(d)
+}
+
+
+
+
+
 #' @describeIn survcalc Plot survival predictions
 #'
 #' @param surv An object of class `"surv.predicts"` generated by `survcalc()`
@@ -594,11 +724,12 @@ plot.surv.predicts <- function(surv, quantity="S",
   out.df$treatment <- factor(out.df$treatment, labels=trtnames, levels=trtnames)
 
   # Define colours
-  cols <- RColorBrewer::brewer.pal(dplyr::n_distinct(trtnames), "Set1")
+  all.cols <- RColorBrewer::brewer.pal(9, "Set1")
+  all.cols <- c(all.cols, RColorBrewer::brewer.pal(4, "Set2"))
 
   # Subset by treatments
   out.df <- subset(out.df, treatment %in% treats)
-  cols <- cols[unique(as.numeric(out.df$treatment))]
+  cols <- all.cols[unique(as.numeric(out.df$treatment))]
 
   capt <- paste0("Fractional polynomial; P1 = ", surv$P1, ifelse(!is.null(surv$P2), paste0(", P2 = ", surv$P2), ""))
   capt <- paste(capt, paste("Reference study:", attr(surv, "refstudy")), sep="\n")
@@ -626,28 +757,31 @@ plot.surv.predicts <- function(surv, quantity="S",
 
     sub <- subset(ipd, study==attr(surv, "refstudy") & treatment %in% treats)
 
-    kmdat <- survival::survfit(Surv(time, event) ~ treatment, data=sub, type="kaplan-meier",)
+    # Add KM plot
+    g <- g + geom_km(sub)
 
-    if (length(treats)>1) {
-      trtvec <- vector()
-      for (i in seq_along(unique(sub$treatment))) {
-        trtvec <- append(trtvec, rep(unique(sub$treatment)[i], kmdat$strata[i]))
-      }
-    } else {
-      trtvec <- rep(unique(sub$treatment),length(kmdat$time))
-    }
-
-    kmdat <- cbind(kmdat$time, kmdat$surv, trtvec)
-
-    kmdat <- as.data.frame(kmdat)
-
-    names(kmdat) <- c("time", "50%", "treatment")
-    kmdat$treatment <- factor(kmdat$treatment, labels=trtnames, levels=1:length(trtnames))
-    kmdat[["2.5%"]] <- 0
-    kmdat[["97.5%"]] <- 0
-
-    # Add km plot
-    g <- g + ggplot2::geom_step(data=kmdat, ggplot2::aes(x=time, y=`50%`), color="black", linetype="solid")
+    # kmdat <- survival::survfit(Surv(time, event) ~ treatment, data=sub, type="kaplan-meier",)
+    #
+    # if (length(treats)>1) {
+    #   trtvec <- vector()
+    #   for (i in seq_along(unique(sub$treatment))) {
+    #     trtvec <- append(trtvec, rep(unique(sub$treatment)[i], kmdat$strata[i]))
+    #   }
+    # } else {
+    #   trtvec <- rep(unique(sub$treatment),length(kmdat$time))
+    # }
+    #
+    # kmdat <- cbind(kmdat$time, kmdat$surv, trtvec)
+    #
+    # kmdat <- as.data.frame(kmdat)
+    #
+    # names(kmdat) <- c("time", "50%", "treatment")
+    # kmdat$treatment <- factor(kmdat$treatment, labels=trtnames, levels=1:length(trtnames))
+    # kmdat[["2.5%"]] <- 0
+    # kmdat[["97.5%"]] <- 0
+    #
+    # # Add km plot
+    # g <- g + ggplot2::geom_step(data=kmdat, ggplot2::aes(x=time, y=`50%`), color="black", linetype="solid")
   }
 
   return(g)
@@ -715,15 +849,35 @@ geom_km <- function(df, curve_args = list(), ...) {
 #'
 #' @inheritParams hrcalc
 #' @inheritParams plot.surv.predicts
+#' @inheritParams survcalc
+#' @param studies A character vector of study names. Must be a subset of
+#' `attr(jagsmod, "studynames")`.
+#' @param d.weights A numeric vector containing weightings (between 0 and 1)
+#' for each study to apply to treatment
+#' effects for a shared parameter model (e.g. separate treatment effects for
+#' histology). Default (`NULL`) is not to apply any weighting. Order of weights
+#' must correspond to the studies in `attr(jagsmod, "studynames")`
 #'
 #' @export
 studykm_survplot <- function(jagsmod,
                              #times=seq(1,60, length.out=100),
+                             studies=attr(jagsmod, "studynames"),
+                             d.weights=NULL,
                              plotinterval=TRUE
                              ) {
 
   quantity <- "S"
   ipd <- attributes(jagsmod)$ipd
+
+  if (!all(studies %in% unique(ipd$study))) {
+    stop("studies must be a subset of attr(jagsmod, 'studynames')")
+  }
+
+  if (!is.null(d.weights)) {
+    if (length(d.weights)!=length(unique(ipd$study))) {
+      stop("length(d.weights) must be equal to the number of studies in the dataset")
+    }
+  }
 
   # Create data frame of survival predictions for each reference study
   pb <- utils::txtProgressBar(min = 0,      # Minimum value of the progress bar
@@ -731,11 +885,11 @@ studykm_survplot <- function(jagsmod,
                               style = 3)   # Character used to create the bar
 
   plot.df <- data.frame()
-  for (s in seq_along(unique(ipd$study))) {
-    study <- unique(ipd$study)[s]
+  for (s in seq_along(studies)) {
+    study <- studies[s]
 
     surv <- survcalc(jagsmod, times=seq(1, max(ipd$time[ipd$study==study]), length.out = 100),
-                     refstudy=study)
+                     refstudy=study, d.weight=d.weights[s])
 
     # Only show survival predictions for treatments within study
     subtrt <- unique(ipd$treatment[ipd$study==study])
@@ -758,7 +912,10 @@ studykm_survplot <- function(jagsmod,
   plot.df$refstudy <- factor(plot.df$refstudy)
 
   # Define colours
-  cols <- RColorBrewer::brewer.pal(dplyr::n_distinct(trtnames), "Set1")
+  all.cols <- RColorBrewer::brewer.pal(9, "Set1")
+  all.cols <- c(all.cols, RColorBrewer::brewer.pal(4, "Set2"))
+
+  cols <- all.cols[1:length(trtnames)]
 
   # Subset by treatments
   capt <- paste0("Fractional polynomial; P1 = ", jagsdat$P1, ifelse(!is.null(jagsdat$P2), paste0(", P2 = ", jagsdat$P2), ""))
@@ -835,14 +992,16 @@ sequence_fpoly <- function(jagsdat, powers=c(-3,-2,-1,-0.5,0,0.5,1,2,3), polyord
   args <- list(...)
 
   # Ensure jagsdat has correct d.mean and prec for polyorder
-  if (polyorder==1) {
-    jagsdat$mean <- c(0,0)
-    jagsdat$prec <- array(c(0.0001, 0, 0, 0.0001), dim=c(2,2))
-  } else if (polyorder==2){
-    jagsdat$mean <- c(0,0,0)
-    jagsdat$prec <- array(c(0.0001, 0, 0,
-                         0, 0.0001, 0,
-                         0, 0, 0.0001), dim=c(3,3))
+  if (!all(c("mean", "prec") %in% names(jagsdat))) {
+    if (polyorder==1) {
+      jagsdat$mean <- c(0,0)
+      jagsdat$prec <- array(c(0.0001, 0, 0, 0.0001), dim=c(2,2))
+    } else if (polyorder==2){
+      jagsdat$mean <- c(0,0,0)
+      jagsdat$prec <- array(c(0.0001, 0, 0,
+                              0, 0.0001, 0,
+                              0, 0, 0.0001), dim=c(3,3))
+    }
   }
 
   # Should previous model file be overwritten or appended?

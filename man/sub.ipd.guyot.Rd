@@ -4,14 +4,18 @@
 \alias{sub.ipd.guyot}
 \title{Take a subset of digitised IPD}
 \usage{
-sub.ipd.guyot(x, y)
+sub.ipd.guyot(x, y, class = "ipd.guyot")
 }
 \arguments{
-\item{x}{An object of class `"ipd.guyot"` generated from digitised IPD containing
+\item{x}{An object of class `"ipd.guyot"` or `"data.frame"` (as defined in `class`)
+generated from digitised IPD containing
 the larger set of IPD}
 
-\item{y}{An object of class `"ipd.guyot"` generated from digitised IPD that should be
-removed from `x`}
+\item{y}{An object of class `"ipd.guyot"` or `"data.frame"` (as defined in `class`)
+generated from digitised IPD that should be removed from `x`}
+
+\item{class}{Can take either `"ipd.guyot"` or `"data.frame"` depending on the
+class of `x` and `y`. In future this should just take `"data.frame"`}
 }
 \description{
 Take a subset of digitised IPD
