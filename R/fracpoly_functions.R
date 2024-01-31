@@ -536,6 +536,9 @@ survcalc <- function(jagsmod, refstudy, refmod=jagsmod,
   # Get index of reference study
   if (!identical(jagsmod, refmod)) {
     message("Model for reference curve is different to the treatment effect model")
+    newref <- TRUE
+  } else {
+    newref <- FALSE
   }
 
   refstudy.ind <- which(attr(refmod, "studynames") %in% refstudy)
@@ -571,12 +574,28 @@ survcalc <- function(jagsmod, refstudy, refmod=jagsmod,
 
   for (k in 1:jagsdat$nt) {
 
-    beta <- mu[mcmc.index.ref,] +
-      (d[mcmc.index.jags,k,] - d[mcmc.index.jags,reftrt,])
+    # Only use mu if different refmod is specified
+    if (newref==FALSE) {
+      beta <- mu[mcmc.index.ref,] +
+        (d[mcmc.index.jags,k,] - d[mcmc.index.jags,reftrt,])
+    } else {
+      beta <- mu[mcmc.index.ref,]
+    }
 
+    # Calculate log-hazard
     loghaz <- get_fp(x = times,
                      params = beta,
                      exponents = exponents)
+
+    # Apply implied HRs if new refmod is specified
+    if (newref==TRUE) {
+      beta <- (d[mcmc.index.jags,k,] - d[mcmc.index.jags,reftrt,])
+      loghr.d <- get_fp(x = times,
+                        params = beta,
+                        exponents = exponents)
+
+      loghaz <- loghaz + loghr.d
+    }
 
     haz <- exp(loghaz)
 
@@ -923,7 +942,7 @@ studykm_survplot <- function(jagsmod,
   g <- ggplot2::ggplot(plot.df, ggplot2::aes(x=time, ymin=`97.5%`, ymax=`2.5%`, y=`50%`,
                                             color=treatment, fill=treatment, linetype=treatment)) +
     ggplot2::geom_line() +
-    ggplot2::facet_wrap(~refstudy) +
+    ggplot2::facet_wrap(~refstudy, scales = "free_x") +
     ggplot2::xlab("Time") + ggplot2::ylab(quantity) +
     ggplot2::theme_bw() +
     ggplot2::scale_fill_manual(name = "Treatment", values=cols) +
