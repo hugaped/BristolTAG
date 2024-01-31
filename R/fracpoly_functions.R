@@ -567,7 +567,10 @@ survcalc <- function(jagsmod, refstudy, refmod=jagsmod,
     exponents <- c(exponents, jagsdat$P2)
   }
 
-  dt <- diff(c(0,times))
+  #dt <- diff(c(0,times))
+
+  #dt <- rep(1, length(times))
+  dt <- diff(seq(0,max(times), length.out=length(times)+1))
 
   for (k in 1:jagsdat$nt) {
 
@@ -593,10 +596,10 @@ survcalc <- function(jagsmod, refstudy, refmod=jagsmod,
                        S_sum)
 
     # Add survival at time=0
-    # temp2 <- data.frame(time = 0,
-    #                     treatment = k,
-    #                     t(apply(matrix(1,nrow=1, ncol=1), MAR = 1, FUN = mcmc_sum)))
-    # temp <- rbind(temp2, temp)
+    temp2 <- data.frame(time = 0,
+                        treatment = k,
+                        t(apply(matrix(1,nrow=1, ncol=1), MAR = 1, FUN = mcmc_sum)))
+    temp <- rbind(temp2, temp)
 
     S.df <- rbind(S.df, temp)
 
