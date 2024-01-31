@@ -536,11 +536,6 @@ survcalc <- function(jagsmod, refstudy, refmod=jagsmod,
   # Get index of reference study
   if (!identical(jagsmod, refmod)) {
     message("Model for reference curve is different to the treatment effect model")
-    newref <- TRUE
-    refdat <- refmod$model$data()
-  } else {
-    newref <- FALSE
-    refdat <- jagsdat$model$data()
   }
 
   refstudy.ind <- which(attr(refmod, "studynames") %in% refstudy)
@@ -567,44 +562,21 @@ survcalc <- function(jagsmod, refstudy, refmod=jagsmod,
     d <- weight_shared_d(jagsmod, d.weight=d.weight)
   }
 
-  exponents <- refdat$P1
-  if (!is.null(refdat$P2)) {
-    exponents <- c(exponents, refdat$P2)
+  exponents <- jagsdat$P1
+  if (!is.null(jagsdat$P2)) {
+    exponents <- c(exponents, jagsdat$P2)
   }
 
   dt <- diff(c(0,times))
 
   for (k in 1:jagsdat$nt) {
 
-    # Only use mu if different refmod is specified
-    if (newref==FALSE) {
-      beta <- mu[mcmc.index.ref,] +
-        (d[mcmc.index.jags,k,] - d[mcmc.index.jags,reftrt,])
-    } else {
-      beta <- mu[mcmc.index.ref,]
-    }
+    beta <- mu[mcmc.index.ref,] +
+      (d[mcmc.index.jags,k,] - d[mcmc.index.jags,reftrt,])
 
-    # Calculate log-hazard
     loghaz <- get_fp(x = times,
                      params = beta,
                      exponents = exponents)
-
-    # Apply implied HRs if new refmod is specified
-    if (newref==TRUE) {
-
-      # Set new powers (allows for difference in FP powers between reference an treatment model)
-      exponents.d <- jagsdat$P1
-      if (!is.null(jagsdat$P2)) {
-        exponents.d <- c(exponents.d, jagsdat$P2)
-      }
-
-      beta <- (d[mcmc.index.jags,k,] - d[mcmc.index.jags,reftrt,])
-      loghr.d <- get_fp(x = times,
-                        params = beta,
-                        exponents = exponents)
-
-      loghaz <- loghaz + loghr.d
-    }
 
     haz <- exp(loghaz)
 
