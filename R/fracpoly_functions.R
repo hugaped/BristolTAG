@@ -584,8 +584,9 @@ survcalc <- function(jagsmod, refstudy, refmod=jagsmod,
     haz <- exp(loghaz)
 
     dH <- dt * haz # approximate the cumulative hazard (for every MCMC iteration); first calculate the incerments over every interval, then sum up
+    # Note that this uses the end of each period to represent the hazard, rather than the midpoint of it
     H  <- apply(dH, MAR = 2, cumsum)
-    #H  <- apply(haz, MAR = 2, cumsum)
+    #H  <- apply(haz, MAR = 2, function(y) {pracma::cumtrapz(x=times, y=y)})
     mort <- 1-exp(-H)
     S  <- exp(-H)
 
