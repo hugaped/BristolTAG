@@ -220,21 +220,34 @@ hazard_function <- function(t, params, exponents) {
 
 
 #' Calculate cumulative hazard function
-cumulative_hazard_function <- function(t, params, exponents) {
-  integrate(hazard_function, params=params, exponents=exponents, lower = 0.1, upper = t)$value
+#'
+#' @param method Can take either `"stats"` or `"pracma"`
+cumulative_hazard_function <- function(t, lower=0.1, params, exponents,
+                                       method="pracma") {
+
+  if (method=="stats") {
+    integrate(hazard_function, params=params, exponents=exponents,
+              rel.tol=.Machine$double.eps^0.1,
+              lower = lower, upper = t)$value
+  } else if (method=="pracma") {
+    pracma::quadgk(hazard_function, a = lower, b = t,
+                 params=params, exponents=exponents,
+                 tol=.Machine$double.eps^0.1)
+  }
 }
 
 
 
 #' Solve for cumulative hazard function at desired survival quantile
-survquant_chunk <- function(params, exponents, quantile=0.5, interval=c(0.1, 1000)) {
+survquant_chunk <- function(params, exponents, quantile=0.5, interval=c(0.1, 1000), ...) {
 
   quantile <- -log(quantile)
 
   uniroot(function(t) {cumulative_hazard_function(t,
                                                   params=params,
                                                   exponents=exponents) - quantile},
-          interval = interval
+          interval = interval,
+          ...
           )$root
 }
 

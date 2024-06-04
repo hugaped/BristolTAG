@@ -13,7 +13,8 @@ auc(surv, tint = c(1, max(surv[[1]]$time)), quantity = "S")
 calculate AUC.}
 
 \item{quantity}{specifies the quantity to be plotted. Can be either `"S"` for survival (note that S is upper case),
-`"mort"` for mortality, `"haz"` for hazards, `"cumhaz"` for cumulative hazards.}
+`"mort"` for mortality, `"haz"` for hazards, `"cumhaz"` for cumulative hazards, `"dH"` for
+interval contributions to cumulative hazard.}
 }
 \value{
 Returns a data frame of AUC values for each treatment

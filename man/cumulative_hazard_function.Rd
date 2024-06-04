@@ -4,7 +4,16 @@
 \alias{cumulative_hazard_function}
 \title{Calculate cumulative hazard function}
 \usage{
-cumulative_hazard_function(t, params, exponents)
+cumulative_hazard_function(
+  t,
+  lower = 0.1,
+  params,
+  exponents,
+  method = "pracma"
+)
+}
+\arguments{
+\item{method}{Can take either `"stats"` or `"pracma"`}
 }
 \description{
 Calculate cumulative hazard function
