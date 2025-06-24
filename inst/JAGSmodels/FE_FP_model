@@ -1,0 +1,52 @@
+model {
+
+  for (j in 1:N) {
+
+    #–– Time transformations ––#
+    t1[j] <- equals(P1, 0) * log(time[j]) + (1 - equals(P1, 0)) * pow(time[j], P1)
+    t2[j] <- equals(P2, 0) * log(time[j]) + (1 - equals(P2, 0)) * pow(time[j], P2)
+    t2_alt[j] <- t1[j] * log(time[j])  # Used only when P1 == P2 in FP2
+
+    # Likelihood
+    r[j] ~ dbin(p[j], z[j])
+    p[j] <- 1 - exp(-h[j] * dt[j])
+
+    #–– Hazard function (unified for FP1 and FP2) ––#
+    log(h[j]) <- Alpha[s[j],a[j],1] +
+                 Alpha[s[j],a[j],2] * t1[j] +
+                 equals(fporder, 2) * (
+                   (1 - equals(P1, P2)) * Alpha[s[j],a[j],3] * t2[j] +
+                   equals(P1, P2) * Alpha[s[j],a[j],3] * t2_alt[j]
+                 )
+
+    # Deviance contribution
+    rhat[j] <- p[j] * z[j]
+    dev[j] <- 2 * (r[j] * (log(r[j]) - log(rhat[j])) +
+                   (z[j] - r[j]) * (log(z[j] - r[j]) - log(z[j] - rhat[j])))
+  }
+
+  #–– Study-level baseline and treatment effects ––#
+  for (i in 1:ns) {
+    for (k in 1:na[i]) {
+      Alpha[i,k,1] <- mu[i,1] + d[t[i,k],1] - d[t[i,1],1]
+      Alpha[i,k,2] <- mu[i,2] + d[t[i,k],2] - d[t[i,1],2]
+      Alpha[i,k,3] <- equals(fporder, 2) * (mu[i,3] + d[t[i,k],3] - d[t[i,1],3])
+    }
+  }
+
+  totresdev <- sum(dev[])
+
+  #–– Priors ––#
+  for (i in 1:ns) {
+    mu[i,1:3] ~ dmnorm(mean[1:3], prec[1:3,1:3])
+  }
+
+  d[1,1] <- 0
+  d[1,2] <- 0
+  d[1,3] <- 0
+
+  for (k in 2:nt) {
+    d[k,1:3] ~ dmnorm(mean[1:3], prec[1:3,1:3])
+  }
+
+}
