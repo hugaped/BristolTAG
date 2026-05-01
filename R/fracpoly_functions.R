@@ -1110,11 +1110,15 @@ sequence_fpoly <- function(jagsdat, powers=c(-3,-2,-1,-0.5,0,0.5,1,2,3), polyord
     # 2nd order FP
   } else if (polyorder==2) {
     count <- 1
-    for (p1 in seq_along(powers)) {
-      for (p2 in seq_along(powers)) {
+    for (p1 in 1:length(powers)) {
+      for (p2 in p1:length(powers)) {
 
         # Calculate permutations of powers
         perm <- factorial(length(powers)) / factorial(length(powers)-2)
+
+        # Calculate combinations of powers
+        comb <- combn(length(powers),2)
+        comb <- ncol(comb)
 
         # Check model name
         modnam <- paste("FP", powers[p1], powers[p2], sep="_")
