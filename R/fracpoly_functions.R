@@ -1019,7 +1019,7 @@ mcmc_sum <- function(mcmc) {
 #'   Must have been generated for the same fractional polynomial model order (`polyorder=1` or `polyorder=2`)
 #'   as the set of models to run.
 #' @param powers A sequence of fractional polynomial powers to run models for. Note that for 2nd order models
-#'   all combinations of powers will be run (i.e. lots of models - length(powers) permute 2).
+#'   all combinations of powers will be run (i.e. lots of models...length(powers) choose 2).
 #' @param jagsfile The location of a JAGS model saved as a `.jags` file on which to run
 #' the sequence of fractional polynomial models. The default `NULL` uses a standard 1st
 #' or 2nd order (depending on the value of `polyorder`) fractional polynomial model.
@@ -1126,12 +1126,12 @@ sequence_fpoly <- function(jagsdat, powers=c(-3,-2,-1,-0.5,0,0.5,1,2,3), polyord
         if (modnam %in% names(modseq) & overwrite==FALSE) {
           #stop("Model run has the same FP powers as an existing model in the list, but overwrite==FALSE")
           print(paste0("Skipping fractional polynomial P1=", powers[p1], ", P2=", powers[p2],
-                       ", model ", count, "/", perm))
+                       ", model ", count, "/", comb))
           count <- count + 1
 
         } else {
           print(paste0("Running fractional polynomial P1=", powers[p1], ", P2=", powers[p2],
-                       ", model ", count, "/", perm))
+                       ", model ", count, "/", comb))
           count <- count + 1
 
           # Set FP power
